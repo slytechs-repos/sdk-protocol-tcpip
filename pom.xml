@@ -1,0 +1,30 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	
+	<parent>
+		<groupId>com.slytechs.jnet.protocol</groupId>
+		<artifactId>protocol-sdk-parent</artifactId>
+		<version>0.1.0-SNAPSHOT</version>
+		<relativePath>../protocol-sdk/pom.xml</relativePath>
+	</parent>
+	
+	<artifactId>protocol-tcpip</artifactId>
+	<name>Protocol TCP/IP</name>
+	<description>Common TCP/IP protocol definitions</description>
+	
+	<dependencies>
+		<dependency>
+			<groupId>com.slytechs.jnet.core</groupId>
+			<artifactId>core-api</artifactId>
+			<version>${core.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.slytechs.jnet.protocol</groupId>
+			<artifactId>protocol-api</artifactId>
+			<version>${protocol-sdk.version}</version>
+		</dependency>
+	</dependencies>
+
+</project>
