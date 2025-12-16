@@ -19,13 +19,20 @@
 /**
  * 
  */
-
-import com.slytechs.jnet.protocol.tcpip.impl.TcpipPlugin;
-
 module com.slytechs.jnet.protocol.tcpip {
 
-	requires com.slytechs.jnet.core.api;
-	requires com.slytechs.jnet.protocol.api;
+	exports com.slytechs.jnet.protocol.tcpip;
+	exports com.slytechs.jnet.protocol.tcpip.ethernet;
+	exports com.slytechs.jnet.protocol.tcpip.ip;
+	exports com.slytechs.jnet.protocol.tcpip.tcp;
 
-	provides com.slytechs.jnet.protocol.api.pack.ProtocolPackPlugin with TcpipPlugin;
+	requires com.slytechs.jnet.core.api;
+	requires transitive com.slytechs.jnet.protocol.api;
+	requires java.logging;
+
+	provides com.slytechs.jnet.protocol.api.pack.ProtocolPackPlugin
+			with com.slytechs.jnet.protocol.tcpip.impl.TcpipPlugin;
+	provides com.slytechs.jnet.protocol.api.table.TableProvider
+			with com.slytechs.jnet.protocol.tcpip.table.TcpIpTableProvider;
+
 }

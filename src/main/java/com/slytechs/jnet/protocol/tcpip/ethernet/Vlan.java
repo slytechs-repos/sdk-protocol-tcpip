@@ -1,235 +1,342 @@
+/*
+ * Sly Technologies Free License
+ * 
+ * Copyright 2025 Sly Technologies Inc.
+ *
+ * Licensed under the Sly Technologies Free License (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.slytechs.com/free-license-text
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.slytechs.jnet.protocol.tcpip.ethernet;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
+import static com.slytechs.jnet.core.api.detail.DetailBuilder.*;
 
-import com.slytechs.jnet.core.api.format.StructFormat;
-import com.slytechs.jnet.core.api.format.StructFormattable;
-import com.slytechs.jnet.protocol.api.Header;
-import com.slytechs.jnet.protocol.api.address.VlanId;
-import com.slytechs.jnet.protocol.api.address.VlanIdMemory;
+import java.lang.foreign.MemoryLayout;
+
+import com.slytechs.jnet.core.api.detail.DetailBuilder;
+import com.slytechs.jnet.core.api.detail.Detailable;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
+import com.slytechs.jnet.protocol.api.FixedHeader;
 import com.slytechs.jnet.protocol.tcpip.Tcpip;
 
 import static java.lang.foreign.MemoryLayout.*;
-import static java.lang.foreign.MemoryLayout.PathElement.*;
-import static java.lang.foreign.ValueLayout.*;
 
 /**
- * Java binding for IEEE 802.1Q VLAN tag header with correct 4-byte layout. VLAN
- * tag format as defined in IEEE 802.1Q.
+ * IEEE 802.1Q VLAN tag header.
+ * 
+ * <p>
+ * VLAN (Virtual Local Area Network) tagging allows a single physical network
+ * to be partitioned into multiple logical networks. The 802.1Q tag is inserted
+ * into Ethernet frames between the source MAC address and the original
+ * EtherType/Length field.
+ * </p>
+ * 
+ * <h2>Header Format</h2>
+ * <pre>
+ *  0                   1                   2                   3
+ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |PCP|D|         VID             |          EtherType            |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * </pre>
+ * 
+ * <h2>Tag Control Information (TCI)</h2>
+ * <ul>
+ * <li><b>PCP</b> (3 bits) - Priority Code Point, IEEE 802.1p class of service</li>
+ * <li><b>DEI</b> (1 bit) - Drop Eligible Indicator (formerly CFI)</li>
+ * <li><b>VID</b> (12 bits) - VLAN Identifier (0-4095)</li>
+ * </ul>
+ * 
+ * <h2>Special VID Values</h2>
+ * <ul>
+ * <li>0 - Priority tagged frame (no VLAN)</li>
+ * <li>1 - Default VLAN</li>
+ * <li>4095 (0xFFF) - Reserved</li>
+ * </ul>
+ * 
+ * <h2>QinQ (802.1ad)</h2>
+ * <p>
+ * Double-tagged frames use TPID 0x88A8 for the outer (service) tag and 0x8100
+ * for the inner (customer) tag. Each tag is parsed as a separate Vlan header.
+ * </p>
+ * 
+ * {@snippet :
+ * Vlan vlan = packet.getHeader(new Vlan());
+ * 
+ * System.out.println("VLAN ID: " + vlan.vid());
+ * System.out.println("Priority: " + vlan.pcp());
+ * System.out.println("Inner Type: " + EtherTypeResolver.resolveAbbr(vlan.etherType()));
+ * }
+ *
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ * @see Ethernet
+ * @see EtherTypeResolver
  */
-public class Vlan extends Header implements StructFormattable {
-	public static final int ID = Tcpip.VLAN_ID;
-	public static final int LENGTH = 2;
+public class Vlan extends FixedHeader implements Detailable {
 
-	public static final MemoryLayout LAYOUT$BIG$SIZE_4 = structLayout(
-			JAVA_SHORT.withName("hdr_tpid").withOrder(ByteOrder.BIG_ENDIAN), // Tag Protocol Identifier = 16 bits
-			VlanIdMemory.LAYOUT.withName("hdr_tci") // Tag Control Information = 16 bits
+	/** Protocol ID for VLAN. */
+	public static final int ID = Tcpip.Constants.VLAN_ID;
+
+	/** VLAN header length in bytes. */
+	public static final int HEADER_LENGTH = 4;
+
+	/** TPID for standard 802.1Q VLAN tag. */
+	public static final int TPID_8021Q = 0x8100;
+
+	/** TPID for 802.1ad service VLAN (QinQ outer tag). */
+	public static final int TPID_8021AD = 0x88A8;
+
+	/** TPID for legacy QinQ (some vendors). */
+	public static final int TPID_QINQ_LEGACY = 0x9100;
+
+	/** VID for priority-tagged frames (no VLAN membership). */
+	public static final int VID_PRIORITY = 0;
+
+	/** Default VLAN ID. */
+	public static final int VID_DEFAULT = 1;
+
+	/** Reserved VID (must not be used). */
+	public static final int VID_RESERVED = 0xFFF;
+
+	/** Maximum valid VID. */
+	public static final int VID_MAX = 4094;
+
+	/** VLAN header memory layout. */
+	public static final MemoryLayout LAYOUT = structLayout(
+			U16_BE.withName("hdr_tci"),
+			U16_BE.withName("hdr_ethertype")
 	);
 
-	public static final MemoryLayout LAYOUT = LAYOUT$BIG$SIZE_4;
+	private static final ShortHandle TCI = new ShortHandle(LAYOUT, "hdr_tci");
+	private static final ShortHandle ETHERTYPE = new ShortHandle(LAYOUT, "hdr_ethertype");
 
-	private static final VarHandle TPID = LAYOUT.varHandle(groupElement("hdr_tpid"));
-	private static final long TCI_OFF = LAYOUT.byteOffset(groupElement("hdr_tci"));
+	private static final int PCP_MASK = 0xE000;
+	private static final int PCP_SHIFT = 13;
+	private static final int DEI_MASK = 0x1000;
+	private static final int VID_MASK = 0x0FFF;
 
-
-	private final VlanIdMemory tci = new VlanIdMemory();
-
+	/**
+	 * Constructs a new VLAN header.
+	 */
 	public Vlan() {
 		super(ID, LAYOUT);
 	}
 
-	public Vlan(Arena arena) {
-		super(ID, LAYOUT, arena);
-		onBindPacket();
-	}
-
-	public Vlan(MemorySegment pointer) {
-		super(ID, LAYOUT, pointer);
-		onBindPacket();
-	}
-
-	public Vlan(MemorySegment seg, long offset) {
-		super(ID, LAYOUT, seg, offset);
-		onBindPacket();
-	}
-
 	/**
-	 * Returns the Tag Protocol Identifier (TPID) field (16 bits). Typically 0x8100
-	 * for standard VLAN tags.
+	 * Returns the Tag Control Information field (16 bits).
+	 * 
+	 * <p>
+	 * The TCI contains PCP, DEI, and VID fields combined.
+	 * </p>
+	 *
+	 * @return the raw TCI value
 	 */
-	public int tpid() {
-		return (short) TPID.get(asMemorySegment(), segmentOffset()) & 0xFFFF;
+	public int tci() {
+		return TCI.getShort(view()) & 0xFFFF;
 	}
 
 	/**
-	 * Sets the Tag Protocol Identifier (TPID) field.
+	 * Sets the Tag Control Information field.
+	 *
+	 * @param tci the TCI value
 	 */
-	public void setTpid(int value) {
-		TPID.set(asMemorySegment(), segmentOffset(), (short) value);
+	public void setTci(int tci) {
+		TCI.setShort(view(), 0, (short) tci);
 	}
 
 	/**
-	 * Returns the Tag Control Information as a VlanId object. This provides access
-	 * to PCP, DEI, and VID fields.
-	 */
-	public VlanId tci() {
-		return tci;
-	}
-
-	/**
-	 * Returns the Priority Code Point (PCP) field (3 bits). Values 0-7 indicating
-	 * frame priority.
+	 * Returns the Priority Code Point field (3 bits).
+	 * 
+	 * <p>
+	 * PCP values map to IEEE 802.1p priority levels:
+	 * </p>
+	 * <ul>
+	 * <li>0 - Best effort (default)</li>
+	 * <li>1 - Background</li>
+	 * <li>2 - Excellent effort</li>
+	 * <li>3 - Critical applications</li>
+	 * <li>4 - Video, &lt; 100ms latency</li>
+	 * <li>5 - Voice, &lt; 10ms latency</li>
+	 * <li>6 - Internetwork control</li>
+	 * <li>7 - Network control</li>
+	 * </ul>
+	 *
+	 * @return the priority value (0-7)
 	 */
 	public int pcp() {
-		return tci.pcp();
+		return (tci() & PCP_MASK) >>> PCP_SHIFT;
 	}
 
 	/**
-	 * Returns the Drop Eligible Indicator (DEI) flag (1 bit). Indicates if the
-	 * frame is eligible to be dropped during congestion.
-	 */
-	public boolean dei() {
-		return tci.dei();
-	}
-
-	/**
-	 * Returns the VLAN Identifier (VID) field (12 bits). The actual VLAN ID
-	 * (1-4094, with 0 and 4095 reserved).
-	 */
-	public int vid() {
-		return tci.vid();
-	}
-
-	/**
-	 * Sets the Priority Code Point (PCP) field.
+	 * Sets the Priority Code Point field.
+	 *
+	 * @param pcp the priority value (0-7)
 	 */
 	public void setPcp(int pcp) {
-		tci.setPcp(pcp);
+		int tci = tci();
+		tci = (tci & ~PCP_MASK) | ((pcp << PCP_SHIFT) & PCP_MASK);
+		setTci(tci);
 	}
 
 	/**
-	 * Sets the Drop Eligible Indicator (DEI) flag.
+	 * Returns the Drop Eligible Indicator field (1 bit).
+	 * 
+	 * <p>
+	 * Formerly called CFI (Canonical Format Indicator). When set, indicates
+	 * the frame may be dropped during congestion.
+	 * </p>
+	 *
+	 * @return true if drop eligible
+	 */
+	public boolean dei() {
+		return (tci() & DEI_MASK) != 0;
+	}
+
+	/**
+	 * Sets the Drop Eligible Indicator field.
+	 *
+	 * @param dei true to mark as drop eligible
 	 */
 	public void setDei(boolean dei) {
-		tci.setDei(dei);
+		int tci = tci();
+		if (dei) {
+			tci |= DEI_MASK;
+		} else {
+			tci &= ~DEI_MASK;
+		}
+		setTci(tci);
 	}
 
 	/**
-	 * Sets the VLAN Identifier (VID) field.
+	 * Returns the VLAN Identifier field (12 bits).
+	 *
+	 * @return the VLAN ID (0-4095)
+	 * @see #VID_PRIORITY
+	 * @see #VID_DEFAULT
+	 * @see #VID_RESERVED
+	 */
+	public int vid() {
+		return tci() & VID_MASK;
+	}
+
+	/**
+	 * Sets the VLAN Identifier field.
+	 *
+	 * @param vid the VLAN ID (0-4095)
 	 */
 	public void setVid(int vid) {
-		tci.setVid(vid);
+		int tci = tci();
+		tci = (tci & ~VID_MASK) | (vid & VID_MASK);
+		setTci(tci);
 	}
 
 	/**
-	 * Sets all TCI fields at once.
+	 * Returns the encapsulated protocol EtherType (16 bits).
+	 * 
+	 * <p>
+	 * This is the EtherType of the payload following the VLAN tag.
+	 * May be another VLAN tag (QinQ) or an upper-layer protocol.
+	 * </p>
+	 *
+	 * @return the EtherType value
+	 * @see EtherTypeResolver
 	 */
-	public void setTci(int pcp, boolean dei, int vid) {
-		tci.setTci(pcp, dei, vid);
+	public int etherType() {
+		return ETHERTYPE.getShort(view()) & 0xFFFF;
 	}
 
 	/**
-	 * Returns true if this is the standard VLAN EtherType (0x8100).
+	 * Sets the encapsulated protocol EtherType.
+	 *
+	 * @param etherType the EtherType value
 	 */
-	public boolean isStandardVlan() {
-		return tpid() == EtherTypes.VLAN;
+	public void setEtherType(int etherType) {
+		ETHERTYPE.setShort(view(), 0, (short) etherType);
 	}
 
 	/**
-	 * Returns true if this is a QinQ (double-tagged) outer tag (0x88A8).
+	 * Checks if this is a priority-tagged frame.
+	 * 
+	 * <p>
+	 * Priority-tagged frames have VID 0 and carry only priority information
+	 * without VLAN membership.
+	 * </p>
+	 *
+	 * @return true if VID is 0
 	 */
-	public boolean isQinQOuter() {
-		return tpid() == EtherTypes.QINQ_OUTER;
+	public boolean isPriorityTagged() {
+		return vid() == VID_PRIORITY;
 	}
 
 	/**
-	 * Returns true if this is a QinQ (double-tagged) inner tag (0x8100).
+	 * Checks if this VLAN tag is followed by another VLAN tag (QinQ).
+	 *
+	 * @return true if etherType indicates another VLAN tag
 	 */
-	public boolean isQinQInner() {
-		return tpid() == EtherTypes.VLAN;
+	public boolean isStacked() {
+		int type = etherType();
+		return type == TPID_8021Q || type == TPID_8021AD || type == TPID_QINQ_LEGACY;
 	}
 
 	/**
-	 * Returns true if this VLAN ID is reserved (0 or 4095).
+	 * Returns a human-readable priority class name.
+	 *
+	 * @return the priority class description
 	 */
-	public boolean isReservedVid() {
-		int vlanId = vid();
-		return vlanId == 0 || vlanId == 4095;
-	}
-
-	/**
-	 * Returns true if this is a valid user VLAN ID (1-4094).
-	 */
-	public boolean isValidVid() {
-		int vlanId = vid();
-		return vlanId >= 1 && vlanId <= 4094;
-	}
-
-	/**
-	 * Returns true if this VLAN has high priority (PCP >= 4).
-	 */
-	public boolean isHighPriority() {
-		return pcp() >= 4;
-	}
-
-	/**
-	 * Returns the traffic class description based on PCP value.
-	 */
-	public String getTrafficClass() {
+	public String pcpToString() {
 		return switch (pcp()) {
-		case 0 -> "Best Effort";
-		case 1 -> "Background";
-		case 2 -> "Excellent Effort";
-		case 3 -> "Critical Applications";
-		case 4 -> "Video";
-		case 5 -> "Voice";
-		case 6 -> "Internetwork Control";
-		case 7 -> "Network Control";
-		default -> "Unknown";
+			case 0 -> "Best Effort";
+			case 1 -> "Background";
+			case 2 -> "Excellent Effort";
+			case 3 -> "Critical Applications";
+			case 4 -> "Video";
+			case 5 -> "Voice";
+			case 6 -> "Internetwork Control";
+			case 7 -> "Network Control";
+			default -> "Unknown";
 		};
 	}
 
 	/**
-	 * Returns the VLAN type description based on TPID.
+	 * {@inheritDoc}
 	 */
-	public String getVlanTypeDescription() {
-		return switch (tpid()) {
-		case EtherTypes.VLAN -> "IEEE 802.1Q VLAN or QinQ Inner Tag";
-		case EtherTypes.QINQ_OUTER -> "QinQ Outer Tag (802.1ad)";
-		default -> String.format("Unknown VLAN Type (0x%04X)", tpid());
-		};
-	}
-
 	@Override
-	protected void onBindPacket() {
-		super.onBindPacket();
+	public void buildDetail(DetailBuilder b) {
+		int off = (int) headerOffset();
 
-		tci.bindMemory(asMemory(), activeBytesStart() + TCI_OFF);
+		b.header("802.1Q Virtual LAN", ID, off, HEADER_LENGTH, h -> {
+			h.summaryf("VID=%d PCP=%d %s",
+					vid(), pcp(),
+					EtherTypeResolver.resolveAbbrOrHex(etherType()));
+
+			h.expandField("TCI", tci(),
+					String.format("PCP=%d, DEI=%d, VID=%d", pcp(), dei() ? 1 : 0, vid()),
+					shortAt(off), f -> {
+						f.field("Priority", pcp(), pcpToString(), bitsAt(off * 8L, 3));
+						f.field("DEI", dei() ? 1 : 0, dei() ? "Eligible" : "Not eligible", bitsAt(off * 8L + 3, 1));
+						f.field("VLAN ID", vid(), bitsAt(off * 8L + 4, 12));
+					});
+
+			h.fieldHex("Type", etherType(), 4,
+					EtherTypeResolver.resolve(etherType()),
+					shortAt(off + 2));
+		});
 	}
 
-	@Override
-	protected void onUnbindPacket() {
-		tci.unbindMemory();
-
-		super.onUnbindPacket();
-	}
-
-	@Override
-	public StructFormat format(StructFormat p) {
-		return p.openln("Vlan")
-				.println("tpid", String.format("0x%04X (%s)", tpid(), getVlanTypeDescription()))
-				.println("pcp", pcp() + " (" + getTrafficClass() + ")")
-				.println("dei", dei() ? "drop-eligible" : "keep")
-				.println("vid", vid())
-				.close();
-	}
-
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String toString() {
-		return format(new StructFormat()).toString();
+		return toDetailString();
 	}
 }

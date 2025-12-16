@@ -6,24 +6,22 @@
 	<parent>
 		<groupId>com.slytechs.jnet.protocol</groupId>
 		<artifactId>protocol-sdk-parent</artifactId>
-		<version>0.1.0-SNAPSHOT</version>
+		<version>0.2.0-SNAPSHOT</version>
 		<relativePath>../protocol-sdk/pom.xml</relativePath>
 	</parent>
 	
 	<artifactId>protocol-tcpip</artifactId>
-	<name>Protocol TCP/IP</name>
+	<name>Protocol SDK - TCP/IP Protocol Pack</name>
 	<description>Common TCP/IP protocol definitions</description>
 	
 	<dependencies>
 		<dependency>
 			<groupId>com.slytechs.jnet.core</groupId>
 			<artifactId>core-api</artifactId>
-			<version>${core.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.slytechs.jnet.protocol</groupId>
 			<artifactId>protocol-api</artifactId>
-			<version>${protocol-sdk.version}</version>
 		</dependency>
 	</dependencies>
 

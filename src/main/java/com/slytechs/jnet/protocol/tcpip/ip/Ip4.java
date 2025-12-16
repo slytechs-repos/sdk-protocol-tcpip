@@ -1,7 +1,7 @@
 /*
  * Sly Technologies Free License
  * 
- * Copyright 2024 Sly Technologies Inc.
+ * Copyright 2025 Sly Technologies Inc.
  *
  * Licensed under the Sly Technologies Free License (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,112 +17,252 @@
  */
 package com.slytechs.jnet.protocol.tcpip.ip;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
+import static com.slytechs.jnet.core.api.detail.DetailBuilder.*;
 
-import com.slytechs.jnet.core.api.format.StructFormat;
-import com.slytechs.jnet.core.api.format.StructFormattable;
+import java.lang.foreign.MemoryLayout;
+
+import com.slytechs.jnet.core.api.detail.DetailBuilder;
+import com.slytechs.jnet.core.api.detail.Detailable;
+import com.slytechs.jnet.core.api.memory.MemoryHandle;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
+import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
+import com.slytechs.jnet.protocol.api.VariableHeader;
 import com.slytechs.jnet.protocol.api.address.Ip4Address;
 import com.slytechs.jnet.protocol.api.address.Ip4AddressMemory;
-import com.slytechs.jnet.protocol.api.address.Ip4AddressRecord;
 import com.slytechs.jnet.protocol.api.checksum.Checksums;
 import com.slytechs.jnet.protocol.tcpip.Tcpip;
 
 import static java.lang.foreign.MemoryLayout.*;
-import static java.lang.foreign.MemoryLayout.PathElement.*;
-import static java.lang.foreign.ValueLayout.*;
 
 /**
- * Java binding for IPv4 header with correct 20-byte layout. IPv4 header format
- * as defined in RFC 791.
+ * Internet Protocol version 4 (IPv4) header as defined in RFC 791.
+ * 
+ * <p>
+ * IPv4 is the fourth version of the Internet Protocol and is a core protocol of
+ * standards-based internetworking methods in the Internet and other
+ * packet-switched networks. The IPv4 header is a minimum of 20 bytes and can
+ * extend up to 60 bytes when options are present.
+ * </p>
+ * 
+ * <h2>Header Format</h2>
+ * 
+ * <pre>
+ *  0                   1                   2                   3
+ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |Version|  IHL  |Type of Service|          Total Length         |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |         Identification        |Flags|      Fragment Offset    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |  Time to Live |    Protocol   |         Header Checksum       |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                       Source Address                          |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                    Destination Address                        |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                    Options                    |    Padding    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * </pre>
+ * 
+ * <h2>Flag Operations</h2>
+ * <p>
+ * IPv4 flags can be checked using the {@code is*()} methods and manipulated
+ * using {@link #flags()}, {@link #setFlags(int)}, and {@link #clearFlags(int)}
+ * with the {@code FLAG_*} constants.
+ * </p>
+ * 
+ * {@snippet :
+ * // Check flags
+ * if (ip4.isDf()) { ... }
+ * 
+ * // Set Don't Fragment
+ * ip4.setFlags(ip4.flags() | Ip4.FLAG_DF);
+ * 
+ * // Clear all flags
+ * ip4.clearFlags(Ip4.FLAG_ALL);
+ * }
+ *
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ * @see Ip4Options
+ * @see Ip
  */
-public class Ip4 extends Ip implements StructFormattable {
-	public static final int ID = Tcpip.IPv4_ID;
-	public static final int LENGTH = 20;
+public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 
-	public static final MemoryLayout LAYOUT$BIG$SIZE_20 = structLayout(
-			JAVA_BYTE.withName("hdr_version_ihl"), // Version (4) + IHL (4) = 8 bits
-			JAVA_BYTE.withName("hdr_type_of_service"), // Type of Service = 8 bits
-			JAVA_SHORT.withName("hdr_total_length").withOrder(ByteOrder.BIG_ENDIAN), // Total Length = 16 bits
-			JAVA_SHORT.withName("hdr_packet_id").withOrder(ByteOrder.BIG_ENDIAN), // Identification = 16 bits
-			JAVA_SHORT.withName("hdr_frag_offset").withOrder(ByteOrder.BIG_ENDIAN), // Flags (3) + Fragment Offset (13)
-																					// = 16 bits
-			JAVA_BYTE.withName("hdr_time_to_live"), // Time to Live = 8 bits
-			JAVA_BYTE.withName("hdr_protocol"), // Protocol = 8 bits
-			JAVA_SHORT.withName("hdr_checksum").withOrder(ByteOrder.BIG_ENDIAN), // Header Checksum = 16 bits
-			Ip4AddressMemory.LAYOUT.withName("hdr_src_addr"), // Source Address = 32 bits
-			Ip4AddressMemory.LAYOUT.withName("hdr_dst_addr") // Destination Address = 32 bits
-	);
+	/** Protocol ID for IPv4. */
+	public static final int ID = Tcpip.Constants.IPv4_ID;
 
-	public static final MemoryLayout LAYOUT = LAYOUT$BIG$SIZE_20;
+	/** Minimum IPv4 header length in bytes (without options). */
+	public static final int MIN_HEADER_LENGTH = 20;
 
-	private static final VarHandle VERSION_IHL = LAYOUT.varHandle(groupElement("hdr_version_ihl"));
-	private static final VarHandle TOS = LAYOUT.varHandle(groupElement("hdr_type_of_service"));
-	private static final VarHandle TOTAL_LENGTH = LAYOUT.varHandle(groupElement("hdr_total_length"));
-	private static final VarHandle PACKET_ID = LAYOUT.varHandle(groupElement("hdr_packet_id"));
-	private static final VarHandle FRAG_OFFSET = LAYOUT.varHandle(groupElement("hdr_frag_offset"));
-	private static final VarHandle TTL = LAYOUT.varHandle(groupElement("hdr_time_to_live"));
-	private static final VarHandle PROTOCOL = LAYOUT.varHandle(groupElement("hdr_protocol"));
-	private static final VarHandle CHECKSUM = LAYOUT.varHandle(groupElement("hdr_checksum"));
-	private static final long SRC_ADDR_OFF = LAYOUT.byteOffset(groupElement("hdr_src_addr"));
-	private static final long DST_ADDR_OFF = LAYOUT.byteOffset(groupElement("hdr_dst_addr"));
+	/** Maximum IPv4 header length in bytes (with options). */
+	public static final int MAX_HEADER_LENGTH = 60;
+
+	/** IPv4 header memory layout. */
+	public static final MemoryLayout LAYOUT = structLayout(
+			U8_BE.withName("hdr_version_ihl"),
+			U8_BE.withName("hdr_type_of_service"),
+			U16_BE.withName("hdr_total_length"),
+			U16_BE.withName("hdr_identification"),
+			U16_BE.withName("hdr_flags_frag_offset"),
+			U8_BE.withName("hdr_time_to_live"),
+			U8_BE.withName("hdr_protocol"),
+			U16_BE.withName("hdr_checksum"),
+			Ip4AddressMemory.LAYOUT.withName("hdr_src_addr"),
+			Ip4AddressMemory.LAYOUT.withName("hdr_dst_addr"));
+
+	private static final ByteHandle VERSION_IHL = new ByteHandle(LAYOUT, "hdr_version_ihl");
+	private static final ByteHandle TOS = new ByteHandle(LAYOUT, "hdr_type_of_service");
+	private static final ShortHandle TOTAL_LENGTH = new ShortHandle(LAYOUT, "hdr_total_length");
+	private static final ShortHandle IDENTIFICATION = new ShortHandle(LAYOUT, "hdr_identification");
+	private static final ShortHandle FLAGS_FRAG_OFFSET = new ShortHandle(LAYOUT, "hdr_flags_frag_offset");
+	private static final ByteHandle TTL = new ByteHandle(LAYOUT, "hdr_time_to_live");
+	private static final ByteHandle PROTOCOL = new ByteHandle(LAYOUT, "hdr_protocol");
+	private static final ShortHandle CHECKSUM = new ShortHandle(LAYOUT, "hdr_checksum");
+
+	private static final long SRC_ADDR_OFF = MemoryHandle.byteOffset(LAYOUT, "hdr_src_addr");
+	private static final long DST_ADDR_OFF = MemoryHandle.byteOffset(LAYOUT, "hdr_dst_addr");
+
+	/** Reserved flag (bit 15) - must be zero. */
+	public static final int FLAG_RESERVED = 0x8000;
+
+	/** Don't Fragment flag (bit 14). */
+	public static final int FLAG_DF = 0x4000;
+
+	/** More Fragments flag (bit 13). */
+	public static final int FLAG_MF = 0x2000;
+
+	/** All flags combined - use for clearing all flags. */
+	public static final int FLAG_ALL = FLAG_RESERVED | FLAG_DF | FLAG_MF;
+
+	/** Mask for fragment offset field (bits 0-12). */
+	private static final int FRAG_OFFSET_MASK = 0x1FFF;
 
 	private final Ip4AddressMemory srcAddress = new Ip4AddressMemory();
 	private final Ip4AddressMemory dstAddress = new Ip4AddressMemory();
+	private final Ip4Options options = new Ip4Options();
 
+	/**
+	 * Constructs a new IPv4 header.
+	 */
 	public Ip4() {
 		super(ID, LAYOUT);
 	}
 
-	public Ip4(Arena arena) {
-		super(ID, LAYOUT, arena);
-
-		onBindPacket();
-	}
-
-	public Ip4(MemorySegment pointer) {
-		super(ID, LAYOUT, pointer);
-
-		onBindPacket();
-	}
-
-	public Ip4(MemorySegment seg, long offset) {
-		super(ID, LAYOUT, seg, offset);
-
-		onBindPacket();
-	}
-
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
-	public int headerLength() {
-		return ihl() * 4;
+	public void buildDetail(DetailBuilder b) {
+		int off = (int) headerOffset();
+
+		b.header("Internet Protocol version 4", ID, off, (int) headerLength(), h -> {
+
+			h.expandField("Version/IHL", versionIhl(),
+					String.format("Version=%d, IHL=%d", version(), ihl()),
+					byteAt(off), f -> {
+						f.field("Version", version(), bitsAt(off * 8L, 4));
+						f.field("Header Length", ihl(), ihlBytes() + " bytes", bitsAt(off * 8L + 4, 4));
+					});
+
+			h.expandField("Differentiated Services", tos(),
+					String.format("DSCP=%d, ECN=%d", dscp(), ecn()),
+					byteAt(off + 1), f -> {
+						f.field("DSCP", dscp(), bitsAt((off + 1) * 8L, 6));
+						f.field("ECN", ecn(), bitsAt((off + 1) * 8L + 6, 2));
+					});
+
+			h.field("Total Length", totalLength(), shortAt(off + 2));
+			h.fieldHex("Identification", id(), 4, shortAt(off + 4));
+
+			h.expandField("Flags/Fragment Offset", flagsOffset(),
+					String.format("Flags=%s, Offset=%d", flagsToString(), fragOffset()),
+					shortAt(off + 6), f -> {
+						f.field("Reserved", isReserved() ? 1 : 0, bitsAt((off + 6) * 8L, 1));
+						f.field("Don't Fragment", isDf() ? 1 : 0, isDf() ? "Set" : "Not set", bitsAt((off + 6) * 8L + 1,
+								1));
+						f.field("More Fragments", isMf() ? 1 : 0, isMf() ? "Set" : "Not set", bitsAt((off + 6) * 8L + 2,
+								1));
+						f.field("Fragment Offset", fragOffset(), fragOffsetBytes() + " bytes", bitsAt((off + 6) * 8L
+								+ 3, 13));
+					});
+
+			h.field("Time to Live", ttl(), byteAt(off + 8));
+			h.field("Protocol", protocol(), IpProtocolResolver.resolveAbbrOrNumber(protocol()), byteAt(off + 9));
+			h.fieldHex("Checksum", checksum(), 4, shortAt(off + 10));
+			h.field("Source", src().toString(), intAt(off + 12));
+			h.field("Destination", dst().toString(), intAt(off + 16));
+		});
+
+		if (hasOptions()) {
+			options().buildDetail(b);
+		}
 	}
 
 	/**
 	 * Returns the Header Checksum field (16 bits).
+	 *
+	 * @return the checksum value
 	 */
 	public int checksum() {
-		return (short) CHECKSUM.get(asMemorySegment(), segmentOffset()) & 0xFFFF;
+		return CHECKSUM.getShort(view()) & 0xFFFF;
 	}
 
 	/**
-	 * Returns true if the Don't Fragment flag is set.
+	 * Returns the checksum as a hexadecimal string.
+	 *
+	 * @return checksum in "0x0000" format
 	 */
-	public boolean dontFragment() {
-		return (fragOffset() & 0x4000) != 0;
+	public String checksumAsHex() {
+		return Checksums.checksumAsHex(checksum());
 	}
 
 	/**
-	 * Returns the DSCP portion of the TOS field (6 bits).
+	 * Clears the specified flags.
+	 *
+	 * {@snippet :
+	 * // Clear Don't Fragment
+	 * ip4.clearFlags(Ip4.FLAG_DF);
+	 * 
+	 * // Clear all flags
+	 * ip4.clearFlags(Ip4.FLAG_ALL);
+	 * }
+	 *
+	 * @param flags the flags to clear (use FLAG_* constants)
 	 */
+	public void clearFlags(int flags) {
+		setFlags(flags() & ~flags);
+	}
+
+	/**
+	 * Computes and sets the IPv4 header checksum.
+	 * 
+	 * <p>
+	 * The checksum is calculated over the entire header with the checksum field
+	 * treated as zero during computation.
+	 * </p>
+	 *
+	 * {@snippet :
+	 * ip4.computeChecksum();
+	 * System.out.println("Checksum: " + ip4.checksumAsHex());
+	 * }
+	 */
+	public int computeChecksum() {
+		int computed = Checksums.computeIp4HeaderChecksum(view().segment(), view().start());
+
+		return computed;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	public int dscp() {
 		return (tos() >>> 2) & 0x3F;
 	}
 
 	/**
-	 * Returns the destination address as an Ip4Address object.
+	 * {@inheritDoc}
 	 */
 	@Override
 	public Ip4Address dst() {
@@ -131,73 +271,120 @@ public class Ip4 extends Ip implements StructFormattable {
 
 	/**
 	 * Returns the destination address as an integer.
+	 *
+	 * @return destination address as 32-bit integer
 	 */
 	public int dstAsInt() {
 		return dstAddress.asInt();
 	}
 
 	/**
-	 * Returns the ECN portion of the TOS field (2 bits).
+	 * {@inheritDoc}
 	 */
+	@Override
 	public int ecn() {
 		return tos() & 0x03;
 	}
 
 	/**
-	 * Returns the flags field as a flag set.
+	 * Returns the flags field (3 bits).
+	 * 
+	 * <p>
+	 * Use with FLAG_* constants for bitwise operations.
+	 * </p>
+	 *
+	 * @return the raw flags value (bits 13-15 of flags/offset field)
+	 * @see #setFlags(int)
+	 * @see #clearFlags(int)
 	 */
-	public Ip4Flags flags() {
-		return new Ip4Flags((fragOffset() >>> 13) & 0x07);
-	}
-
-	@Override
-	public StructFormat format(StructFormat p) {
-		return p.openln("Ip4")
-				.println("version", version())
-				.println("ihl", ihl() + " (" + ihlBytes() + " bytes)")
-				.println("tos", tos() + " (dscp=" + dscp() + ", ecn=" + ecn() + ")")
-				.println("length", length())
-				.println("id", id())
-				.println("flags", flags().toString())
-				.println("fragOffset", fragOffsetValue() + " (" + fragOffsetBytes() + " bytes)")
-				.println("ttl", ttl())
-				.println("protocol", protocol())
-				.println("checksum", "0x" + Integer.toHexString(checksum()))
-				.println("src", src())
-				.println("dst", dst())
-				.close();
+	public int flags() {
+		return flagsOffset() & (FLAG_ALL);
 	}
 
 	/**
-	 * Returns the combined Flags + Fragment Offset field (16 bits).
+	 * Returns the combined flags and fragment offset field (16 bits).
+	 *
+	 * @return the raw 16-bit field value
+	 */
+	public int flagsOffset() {
+		return FLAGS_FRAG_OFFSET.getShort(view()) & 0xFFFF;
+	}
+
+	/**
+	 * Returns a human-readable string of active flags.
+	 *
+	 * @return space-separated flag names, or "none" if no flags set
+	 */
+	public String flagsToString() {
+		StringBuilder sb = new StringBuilder();
+		if (isReserved())
+			sb.append("RESERVED ");
+		if (isDf())
+			sb.append("DF ");
+		if (isMf())
+			sb.append("MF ");
+		return sb.length() > 0 ? sb.toString().trim() : "none";
+	}
+
+	/**
+	 * Returns the fragment offset field (13 bits) in 8-byte units.
+	 *
+	 * @return fragment offset in 8-byte units
 	 */
 	public int fragOffset() {
-		return (short) FRAG_OFFSET.get(asMemorySegment(), segmentOffset()) & 0xFFFF;
+		return flagsOffset() & FRAG_OFFSET_MASK;
 	}
 
 	/**
 	 * Returns the fragment offset in bytes.
+	 *
+	 * @return fragment offset in bytes
 	 */
 	public int fragOffsetBytes() {
-		return fragOffsetValue() * 8;
+		return fragOffset() * 8;
 	}
 
 	/**
-	 * Returns the fragment offset value (13 bits, in 8-byte units).
+	 * {@inheritDoc}
 	 */
-	public int fragOffsetValue() {
-		return fragOffset() & 0x1FFF;
+	@Override
+	public boolean hasOptions() {
+		return ihl() > 5;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public long headerLength() {
+		return ihlBytes();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public long headerMinLength() {
+		return MIN_HEADER_LENGTH;
 	}
 
 	/**
 	 * Returns the Identification field (16 bits).
+	 * 
+	 * <p>
+	 * Used for uniquely identifying fragments of an original IP datagram.
+	 * </p>
+	 *
+	 * @return the identification value
 	 */
 	public int id() {
-		return (short) PACKET_ID.get(asMemorySegment(), segmentOffset()) & 0xFFFF;
+		return IDENTIFICATION.getShort(view()) & 0xFFFF;
 	}
 
 	/**
-	 * Returns the Internet Header Length in 32-bit words.
+	 * Returns the Internet Header Length in 32-bit words (4 bits).
+	 *
+	 * @return header length in 32-bit words (5-15)
 	 */
 	public int ihl() {
 		return versionIhl() & 0xF;
@@ -205,111 +392,223 @@ public class Ip4 extends Ip implements StructFormattable {
 
 	/**
 	 * Returns the Internet Header Length in bytes.
+	 *
+	 * @return header length in bytes (20-60)
 	 */
 	public int ihlBytes() {
 		return ihl() * 4;
 	}
 
 	/**
-	 * Returns true if this is a broadcast packet.
+	 * Checks if the Don't Fragment (DF) flag is set.
+	 *
+	 * @return true if packet should not be fragmented
 	 */
-	public boolean isBroadcast() {
-		return dstAsInt() == 0xFFFFFFFF; // 255.255.255.255
+	public boolean isDf() {
+		return (flagsOffset() & FLAG_DF) != 0;
 	}
 
 	/**
-	 * Returns true if this packet is fragmented.
+	 * Checks if this is the first fragment of a fragmented packet.
+	 *
+	 * @return true if MF is set and fragment offset is zero
 	 */
+	public boolean isFirstFragment() {
+		return isMf() && fragOffset() == 0;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	public boolean isFragmented() {
-		return moreFragments() || fragOffsetValue() != 0;
+		return isMf() || fragOffset() != 0;
 	}
 
 	/**
-	 * Returns true if this is the last fragment.
+	 * Checks if this is the last fragment of a fragmented packet.
+	 *
+	 * @return true if MF is not set and fragment offset is non-zero
 	 */
 	public boolean isLastFragment() {
-		return !moreFragments() && fragOffsetValue() != 0;
+		return !isMf() && fragOffset() != 0;
 	}
 
 	/**
-	 * Returns true if this is a multicast packet.
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * IPv4 multicast addresses are in the range {@code 224.0.0.0/4}.
+	 * </p>
 	 */
+	@Override
 	public boolean isMulticast() {
-		int firstOctet = (dstAsInt() >>> 24) & 0xFF;
-		return firstOctet >= 224 && firstOctet <= 239; // 224.0.0.0/4
+		return dstAddress.isMulticast();
 	}
 
 	/**
-	 * Returns true if this is a unicast packet.
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * IPv4 loopback addresses are in the range {@code 127.0.0.0/8}.
+	 * </p>
+	 */
+	@Override
+	public boolean isLoopback() {
+		return dstAddress.isLoopback();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * <p>
+	 * IPv4 link-local addresses are in the range {@code 169.254.0.0/16}.
+	 * </p>
+	 */
+	@Override
+	public boolean isLinkLocal() {
+		return dstAddress.isLinkLocal();
+	}
+
+	/**
+	 * Checks if the destination is a broadcast address.
+	 *
+	 * @return true if destination is {@code 255.255.255.255}
+	 */
+	public boolean isBroadcast() {
+		return dstAddress.isBroadcast();
+	}
+
+	/**
+	 * Checks if the destination is a private address.
+	 * 
+	 * <p>
+	 * Private ranges: {@code 10.0.0.0/8}, {@code 172.16.0.0/12},
+	 * {@code 192.168.0.0/16}
+	 * </p>
+	 *
+	 * @return true if destination is a private address
+	 */
+	public boolean isPrivate() {
+		return dstAddress.isPrivate();
+	}
+
+	/**
+	 * Checks if the More Fragments (MF) flag is set.
+	 *
+	 * @return true if more fragments follow
+	 */
+	public boolean isMf() {
+		return (flagsOffset() & FLAG_MF) != 0;
+	}
+
+	/**
+	 * Checks if this is a middle fragment of a fragmented packet.
+	 *
+	 * @return true if MF is set and fragment offset is non-zero
+	 */
+	public boolean isMiddleFragment() {
+		return isMf() && fragOffset() != 0;
+	}
+
+	/**
+	 * Checks if the reserved flag is set.
+	 * 
+	 * <p>
+	 * This flag must be zero according to RFC 791.
+	 * </p>
+	 *
+	 * @return true if reserved flag is set (should always be false)
+	 */
+	public boolean isReserved() {
+		return (flagsOffset() & FLAG_RESERVED) != 0;
+	}
+
+	/**
+	 * Checks if the destination is a unicast address.
+	 *
+	 * @return true if not broadcast or multicast
 	 */
 	public boolean isUnicast() {
 		return !isBroadcast() && !isMulticast();
 	}
 
 	/**
-	 * Returns the Total Length field (16 bits).
+	 * {@inheritDoc}
 	 */
-	public int length() {
-		return (short) TOTAL_LENGTH.get(asMemorySegment(), segmentOffset()) & 0xFFFF;
+	@Override
+	protected void onBindPacket() {
+		srcAddress.bind(this, SRC_ADDR_OFF, 4);
+		dstAddress.bind(this, DST_ADDR_OFF, 4);
+		options.bind(getPacket(), optionsOffset(), optionsLength());
 	}
 
 	/**
-	 * Returns true if the More Fragments flag is set.
+	 * {@inheritDoc}
 	 */
-	public boolean moreFragments() {
-		return (fragOffset() & 0x2000) != 0;
+	@Override
+	protected void onUnbindPacket() {
+		srcAddress.unbind();
+		dstAddress.unbind();
+		options.unbind();
 	}
 
 	/**
-	 * Helper method to parse IPv4 address string to bytes.
+	 * {@inheritDoc}
 	 */
-	private byte[] parseIpv4Address(String ipStr) {
-		String[] parts = ipStr.split("\\.");
-		if (parts.length != 4) {
-			throw new IllegalArgumentException("Invalid IPv4 address format: " + ipStr);
-		}
-
-		byte[] bytes = new byte[4];
-		try {
-			for (int i = 0; i < 4; i++) {
-				int octet = Integer.parseInt(parts[i]);
-				if (octet < 0 || octet > 255) {
-					throw new IllegalArgumentException("Invalid octet value: " + octet);
-				}
-				bytes[i] = (byte) octet;
-			}
-		} catch (NumberFormatException e) {
-			throw new IllegalArgumentException("Invalid IPv4 address format: " + ipStr, e);
-		}
-
-		return bytes;
+	@Override
+	public Ip4Options options() {
+		if (!options.isBound())
+			options.bind(getPacket(), optionsOffset(), optionsLength());
+		return options;
 	}
 
 	/**
-	 * Returns the Protocol field (8 bits).
+	 * {@inheritDoc}
+	 */
+	@Override
+	public long optionsLength() {
+		return ihlBytes() - MIN_HEADER_LENGTH;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public long optionsOffset() {
+		return headerOffset() + MIN_HEADER_LENGTH;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public int payloadLength() {
+		return totalLength() - ihlBytes();
+	}
+
+	/**
+	 * {@inheritDoc}
 	 */
 	@Override
 	public int protocol() {
-		return (byte) PROTOCOL.get(asMemorySegment(), segmentOffset()) & 0xFF;
+		return PROTOCOL.getByte(view()) & 0xFF;
 	}
 
 	/**
 	 * Sets the Header Checksum field.
+	 *
+	 * @param checksum the checksum value
 	 */
-	public void setChecksum(int value) {
-		CHECKSUM.set(asMemorySegment(), segmentOffset(), (short) value);
+	public void setChecksum(int checksum) {
+		CHECKSUM.setShort(view(), 0, (short) checksum);
 	}
 
 	/**
-	 * @see com.slytechs.jnet.protocol.tcpip.ip.Ip#computeChecksum()
-	 */
-	@Override
-	public void computeChecksum() {
-		setChecksum(Checksums.computeIpv4HeaderChecksum(asMemorySegment(), activeBytesStart()));
-	}
-
-	/**
-	 * Sets both DSCP and ECN fields within TOS.
+	 * Sets DSCP and ECN fields within the TOS byte.
+	 *
+	 * @param dscp the DSCP value (0-63)
+	 * @param ecn  the ECN value (0-3)
 	 */
 	public void setDscpEcn(int dscp, int ecn) {
 		int tos = ((dscp & 0x3F) << 2) | (ecn & 0x03);
@@ -318,124 +617,102 @@ public class Ip4 extends Ip implements StructFormattable {
 
 	/**
 	 * Sets the destination address from an integer.
+	 *
+	 * @param addr the address as 32-bit integer
 	 */
-	public void setDst(int value) {
-		dstAddress.setInt(value);
-	}
-
-	/**
-	 * Sets the destination address from an Ip4Address object.
-	 */
-	public void setDstFromAddress(Ip4Address address) {
-		setDst(address.asInt());
+	public void setDst(int addr) {
+		dstAddress.setInt(addr);
 	}
 
 	/**
 	 * Sets the destination address from a byte array.
+	 *
+	 * @param bytes 4-byte address
+	 * @throws IllegalArgumentException if bytes is not 4 bytes
 	 */
 	public void setDstFromBytes(byte[] bytes) {
-		if (bytes.length != 4) {
-			throw new IllegalArgumentException("IPv4 address must be 4 bytes");
-		}
-		int addr = ((bytes[0] & 0xFF) << 24) |
-				((bytes[1] & 0xFF) << 16) |
-				((bytes[2] & 0xFF) << 8) |
-				(bytes[3] & 0xFF);
-		setDst(addr);
+		dstAddress.setBytes(bytes);
 	}
 
 	/**
 	 * Sets the destination address from a string.
+	 *
+	 * @param ipStr dotted-decimal format (e.g., "192.168.1.1")
 	 */
 	public void setDstFromString(String ipStr) {
-		setDstFromBytes(parseIpv4Address(ipStr));
+		setDst(Ip4Address.parseIpv4Address(ipStr));
 	}
 
 	/**
-	 * Sets the flags field from a flag set.
+	 * Sets the flags field.
+	 *
+	 * {@snippet :
+	 * ip4.setFlags(ip4.flags() | Ip4.FLAG_DF);
+	 * }
+	 *
+	 * @param flags the flags value (use FLAG_* constants)
+	 * @see #clearFlags(int)
 	 */
-	public void setFlags(Ip4Flags flags) {
-		int currentOffset = fragOffsetValue();
-		int flagBits = (int) (flags.value() << 13);
-		setFragOffset(currentOffset | flagBits);
+	public void setFlags(int flags) {
+		int offset = fragOffset();
+		int newValue = (flags & FLAG_ALL) | (offset & FRAG_OFFSET_MASK);
+		FLAGS_FRAG_OFFSET.setShort(view(), 0, (short) newValue);
 	}
 
 	/**
-	 * Sets the combined Flags + Fragment Offset field.
+	 * Sets the fragment offset field.
+	 *
+	 * @param offset fragment offset in 8-byte units
 	 */
-	public void setFragOffset(int value) {
-		FRAG_OFFSET.set(asMemorySegment(), segmentOffset(), (short) value);
-	}
-
-	/**
-	 * Sets the fragment offset and flags separately.
-	 */
-	public void setFragOffsetValue(int offsetValue, boolean dontFragment, boolean moreFragments) {
-		int packed = offsetValue & 0x1FFF;
-		if (dontFragment)
-			packed |= 0x4000;
-		if (moreFragments)
-			packed |= 0x2000;
-		setFragOffset(packed);
+	public void setFragOffset(int offset) {
+		int flags = flags();
+		int newValue = flags | (offset & FRAG_OFFSET_MASK);
+		FLAGS_FRAG_OFFSET.setShort(view(), 0, (short) newValue);
 	}
 
 	/**
 	 * Sets the Identification field.
+	 *
+	 * @param id the identification value
 	 */
-	public void setId(int value) {
-		PACKET_ID.set(asMemorySegment(), segmentOffset(), (short) value);
+	public void setId(int id) {
+		IDENTIFICATION.setShort(view(), 0, (short) id);
 	}
 
 	/**
-	 * Sets the Total Length field.
+	 * Sets the Internet Header Length in 32-bit words.
+	 *
+	 * @param ihl header length in 32-bit words (5-15)
 	 */
-	public void setLength(int value) {
-		TOTAL_LENGTH.set(asMemorySegment(), segmentOffset(), (short) value);
+	public void setIhl(int ihl) {
+		int version = version();
+		setVersionIhl(version, ihl);
 	}
 
 	/**
 	 * Sets the Protocol field.
+	 *
+	 * @param protocol the protocol number
+	 * @see IpProtocolResolver
 	 */
-	public void setProtocol(int value) {
-		PROTOCOL.set(asMemorySegment(), segmentOffset(), (byte) value);
+	public void setProtocol(int protocol) {
+		PROTOCOL.setByte(view(), 0, (byte) protocol);
 	}
 
 	/**
 	 * Sets the source address from an integer.
+	 *
+	 * @param addr the address as 32-bit integer
 	 */
-	public void setSrc(int value) {
-		srcAddress.setInt(value);
-	}
-
-	/**
-	 * @see com.slytechs.jnet.core.api.memory.MemoryBinding#onBindMemorySegment()
-	 */
-	@Override
-	protected void onBindPacket() {
-		srcAddress.bindMemory(asMemory(), activeBytesStart() + SRC_ADDR_OFF);
-		dstAddress.bindMemory(asMemory(), activeBytesStart() + DST_ADDR_OFF);
-	}
-
-	/**
-	 * @see com.slytechs.jnet.core.api.memory.MemoryBinding#onUnbind()
-	 */
-	@Override
-	protected void onUnbindPacket() {
-		srcAddress.unbindMemory();
-		dstAddress.unbindMemory();
-
-		super.onUnbindMemory();
-	}
-
-	/**
-	 * Sets the source address from an Ip4Address object.
-	 */
-	public void setSrcFromAddress(Ip4Address address) {
-		setSrc(address.asInt());
+	public void setSrc(int addr) {
+		srcAddress.setInt(addr);
 	}
 
 	/**
 	 * Sets the source address from a byte array.
+	 *
+	 * @param bytes 4-byte address
+	 * @throws IllegalArgumentException if bytes is not 4 bytes
 	 */
 	public void setSrcFromBytes(byte[] bytes) {
 		srcAddress.setBytes(bytes);
@@ -443,56 +720,63 @@ public class Ip4 extends Ip implements StructFormattable {
 
 	/**
 	 * Sets the source address from a string.
+	 *
+	 * @param ipStr dotted-decimal format (e.g., "192.168.1.1")
 	 */
 	public void setSrcFromString(String ipStr) {
-		setSrcFromBytes(parseIpv4Address(ipStr));
+		setSrc(Ip4Address.parseIpv4Address(ipStr));
 	}
 
 	/**
 	 * Sets the Type of Service field.
+	 *
+	 * @param tos the TOS value
 	 */
-	public void setTos(int value) {
-		TOS.set(asMemorySegment(), segmentOffset(), (byte) value);
+	public void setTos(int tos) {
+		TOS.setByte(view(), 0, (byte) tos);
 	}
 
 	/**
-	 * Sets the TOS field from a flag set.
+	 * Sets the Total Length field.
+	 *
+	 * @param length total packet length in bytes
 	 */
-	public void setTosFromFlags(Ip4TosFlags tosFlags) {
-		setTos((int) tosFlags.value());
+	public void setTotalLength(int length) {
+		TOTAL_LENGTH.setShort(view(), 0, (short) length);
 	}
 
 	/**
-	 * Sets the Time to Live field.
+	 * Sets the Time To Live field.
+	 *
+	 * @param ttl the TTL value (0-255)
 	 */
-	public void setTtl(int value) {
-		TTL.set(asMemorySegment(), segmentOffset(), (byte) value);
+	public void setTtl(int ttl) {
+		TTL.setByte(view(), 0, (byte) ttl);
 	}
 
 	/**
-	 * Sets the combined Version + IHL field.
-	 */
-	public void setVersionIhl(int value) {
-		VERSION_IHL.set(asMemorySegment(), segmentOffset(), (byte) value);
-	}
-
-	/**
-	 * Sets version and IHL fields separately.
+	 * Sets the combined Version and IHL field.
+	 *
+	 * @param version the IP version (4 bits)
+	 * @param ihl     the header length in 32-bit words (4 bits)
 	 */
 	public void setVersionIhl(int version, int ihl) {
-		setVersionIhl(((version & 0xF) << 4) | (ihl & 0xF));
+		int value = ((version & 0xF) << 4) | (ihl & 0xF);
+		VERSION_IHL.setByte(view(), 0, (byte) value);
 	}
 
 	/**
-	 * Returns the source address as an Ip4Address object.
+	 * {@inheritDoc}
 	 */
 	@Override
-	public Ip4AddressRecord src() {
-		return new Ip4AddressRecord(srcAsInt());
+	public Ip4Address src() {
+		return srcAddress;
 	}
 
 	/**
 	 * Returns the source address as an integer.
+	 *
+	 * @return source address as 32-bit integer
 	 */
 	public int srcAsInt() {
 		return srcAddress.asInt();
@@ -500,32 +784,46 @@ public class Ip4 extends Ip implements StructFormattable {
 
 	/**
 	 * Returns the Type of Service field (8 bits).
+	 *
+	 * @return the TOS value
 	 */
 	public int tos() {
-		return (byte) TOS.get(asMemorySegment(), segmentOffset()) & 0xFF;
+		return TOS.getByte(view()) & 0xFF;
 	}
 
 	/**
-	 * Returns the TOS field as a flag set.
+	 * {@inheritDoc}
 	 */
-	public Ip4TosFlags tosAsFlags() {
-		return new Ip4TosFlags(tos());
-	}
-
 	@Override
 	public String toString() {
-		return format(new StructFormat()).toString();
+		return toDetailString();
 	}
 
 	/**
-	 * Returns the Time to Live field (8 bits).
+	 * Returns the Total Length field (16 bits).
+	 * 
+	 * <p>
+	 * This is the entire packet size in bytes, including header and data.
+	 * </p>
+	 *
+	 * @return total packet length in bytes
 	 */
-	public int ttl() {
-		return (byte) TTL.get(asMemorySegment(), activeBytesStart()) & 0xFF;
+	public int totalLength() {
+		return TOTAL_LENGTH.getShort(view()) & 0xFFFF;
 	}
 
 	/**
-	 * Returns the IP version (should always be 4 for IPv4).
+	 * {@inheritDoc}
+	 */
+	@Override
+	public int ttl() {
+		return TTL.getByte(view()) & 0xFF;
+	}
+
+	/**
+	 * Returns the IP version field (4 bits).
+	 *
+	 * @return 4 for IPv4
 	 */
 	@Override
 	public int version() {
@@ -533,20 +831,11 @@ public class Ip4 extends Ip implements StructFormattable {
 	}
 
 	/**
-	 * Returns the combined Version + IHL field (8 bits).
+	 * Returns the combined Version and IHL field (8 bits).
+	 *
+	 * @return the raw byte value
 	 */
 	public int versionIhl() {
-		return (byte) VERSION_IHL.get(asMemorySegment(), segmentOffset()) & 0xFF;
+		return VERSION_IHL.getByte(view()) & 0xFF;
 	}
-
-	/**
-	 * @see com.slytechs.jnet.protocol.tcpip.ip.Ip#setVersion(int)
-	 */
-	@Override
-	public void setVersion(int newVersion) {
-		int ihl = ihl();
-
-		setVersionIhl(newVersion, ihl);
-	}
-
 }
