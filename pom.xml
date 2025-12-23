@@ -1,28 +1,61 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	
-	<parent>
-		<groupId>com.slytechs.jnet.protocol</groupId>
-		<artifactId>protocol-sdk-parent</artifactId>
-		<version>0.2.0-SNAPSHOT</version>
-		<relativePath>../protocol-sdk/pom.xml</relativePath>
-	</parent>
-	
-	<artifactId>protocol-tcpip</artifactId>
-	<name>Protocol SDK - TCP/IP Protocol Pack</name>
-	<description>Common TCP/IP protocol definitions</description>
-	
-	<dependencies>
-		<dependency>
-			<groupId>com.slytechs.jnet.core</groupId>
-			<artifactId>core-api</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.slytechs.jnet.protocol</groupId>
-			<artifactId>protocol-api</artifactId>
-		</dependency>
-	</dependencies>
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <groupId>com.slytechs.sdk</groupId>
+    <artifactId>sdk-protocol-tcpip</artifactId>
+    <version>3.0.0-SNAPSHOT</version>
+    <name>SDK Protocol TCPIP</name>
+    <description>TCP/IP protocol pack - Ethernet, IPv4, IPv6, TCP, UDP, etc.</description>
 
+    <properties>
+        <maven.compiler.source>22</maven.compiler.source>
+        <maven.compiler.target>22</maven.compiler.target>
+        <maven.compiler.release>22</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.slytechs.sdk</groupId>
+                <artifactId>sdk-bom</artifactId>
+                <version>3.0.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    
+    <dependencies>
+        <dependency>
+            <groupId>com.slytechs.sdk</groupId>
+            <artifactId>sdk-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.slytechs.sdk</groupId>
+            <artifactId>sdk-protocol-core</artifactId>
+        </dependency>
+        
+        <!-- Test -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 </project>

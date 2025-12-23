@@ -17,6 +17,8 @@
  */
 package com.slytechs.jnet.protocol.tcpip.ipsec;
 
+import com.slytechs.jnet.protocol.api.ProtocolId;
+
 /**
  * Common constants and utilities for IPsec protocols.
  * 
@@ -52,6 +54,8 @@ package com.slytechs.jnet.protocol.tcpip.ipsec;
  * @see IpsecEsp
  */
 public final class Ipsec {
+	
+	public static final int HEADER_ID = ProtocolId.IPSEC;
 
 	/** IP protocol number for AH (Authentication Header). */
 	public static final int IP_PROTOCOL_AH = 51;

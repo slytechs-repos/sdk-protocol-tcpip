@@ -26,8 +26,8 @@ import com.slytechs.jnet.core.api.detail.DetailBuilder;
 import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
 import com.slytechs.jnet.protocol.api.FixedHeader;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 import com.slytechs.jnet.protocol.api.checksum.Checksums;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -77,8 +77,8 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public class Udp extends FixedHeader implements Detailable {
 
-	/** Protocol ID for UDP. */
-	public static final int ID = Tcpip.Constants.UDP_ID;
+	/** Protocol HEADER_ID for UDP. */
+	public static final int HEADER_ID = ProtocolId.UDP;
 
 	/** UDP header length in bytes (fixed size). */
 	public static final int HEADER_LENGTH = 8;
@@ -99,7 +99,7 @@ public class Udp extends FixedHeader implements Detailable {
 	 * Constructs a new UDP header.
 	 */
 	public Udp() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
@@ -265,7 +265,7 @@ public class Udp extends FixedHeader implements Detailable {
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("User Datagram Protocol", ID, off, HEADER_LENGTH, h -> {
+		b.header("User Datagram Protocol", "UDP", HEADER_ID, off, HEADER_LENGTH, h -> {
 			h.summaryf("%d → %d Len=%d",
 					srcPort(), dstPort(), length());
 

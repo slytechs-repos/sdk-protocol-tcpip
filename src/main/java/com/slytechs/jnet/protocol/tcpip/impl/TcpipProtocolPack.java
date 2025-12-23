@@ -17,14 +17,20 @@
  */
 package com.slytechs.jnet.protocol.tcpip.impl;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.slytechs.jnet.protocol.api.Header;
 import com.slytechs.jnet.protocol.api.Protocol;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 import com.slytechs.jnet.protocol.api.pack.AbstractProtocolPack;
 import com.slytechs.jnet.protocol.api.pack.ProtocolPack;
+import com.slytechs.jnet.protocol.tcpip.Tcpip;
 
 /**
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -37,6 +43,15 @@ public class TcpipProtocolPack extends AbstractProtocolPack {
 	public static final int ID = ProtocolPack.TCPIP_ID;
 	public static final String NAME = "tcpip";
 	public static final String DESCRIPTION = "Common TCP/IP protocol pack";
+	private static final Map<Integer, Protocol> protocolMap = new HashMap<>();
+	private static final List<Protocol> protocolList;
+
+	static {
+		Arrays.stream(Tcpip.values())
+				.forEach(p -> protocolMap.put(p.id() & ProtocolId.MASK_DESCRIPTOR, p));
+
+		protocolList = Collections.unmodifiableList(List.copyOf(protocolMap.values()));
+	}
 
 	public static TcpipProtocolPack get() {
 		if (SINGLETON.get() == null)
@@ -61,7 +76,7 @@ public class TcpipProtocolPack extends AbstractProtocolPack {
 	 */
 	@Override
 	public List<Protocol> listProtocols() {
-		throw new UnsupportedOperationException("not implemented yet");
+		return protocolList;
 	}
 
 	/**
@@ -69,7 +84,7 @@ public class TcpipProtocolPack extends AbstractProtocolPack {
 	 */
 	@Override
 	public Protocol mapProtocolUsingId(int protocolId) {
-		throw new UnsupportedOperationException("not implemented yet");
+		return protocolMap.get(protocolId);
 	}
 
 	/**

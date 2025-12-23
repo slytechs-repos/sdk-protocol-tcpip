@@ -26,9 +26,9 @@ import com.slytechs.jnet.core.api.detail.DetailBuilder;
 import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 import com.slytechs.jnet.protocol.api.VariableHeader;
 import com.slytechs.jnet.protocol.api.checksum.Checksums;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -88,8 +88,8 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 
-	/** Protocol ID for TCP. */
-	public static final int ID = Tcpip.Constants.TCP_ID;
+	/** Protocol HEADER_ID for TCP. */
+	public static final int HEADER_ID = ProtocolId.TCP;
 
 	/** Minimum TCP header length in bytes (without options). */
 	public static final int MIN_HEADER_LENGTH = 20;
@@ -99,14 +99,14 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 
 	/** TCP header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
-			U16_BE.withName("hdr_src_port"),
-			U16_BE.withName("hdr_dst_port"),
-			U32_BE.withName("hdr_seq_number"),
-			U32_BE.withName("hdr_ack_number"),
-			U16_BE.withName("hdr_hlen_flags"),
-			U16_BE.withName("hdr_window"),
-			U16_BE.withName("hdr_checksum"),
-			U16_BE.withName("hdr_urgent_pointer"));
+			U16_BE_A1.withName("hdr_src_port"),
+			U16_BE_A1.withName("hdr_dst_port"),
+			U32_BE_A1.withName("hdr_seq_number"),
+			U32_BE_A1.withName("hdr_ack_number"),
+			U16_BE_A1.withName("hdr_hlen_flags"),
+			U16_BE_A1.withName("hdr_window"),
+			U16_BE_A1.withName("hdr_checksum"),
+			U16_BE_A1.withName("hdr_urgent_pointer"));
 
 	private static final ShortHandle SRC_PORT = new ShortHandle(LAYOUT, "hdr_src_port");
 	private static final ShortHandle DST_PORT = new ShortHandle(LAYOUT, "hdr_dst_port");
@@ -155,7 +155,7 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	 * Constructs a new TCP header.
 	 */
 	public Tcp() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
@@ -179,7 +179,7 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("Transmission Control Protocol", ID, off, (int) headerLength(), h -> {
+		b.header("Transmission Control Protocol", "TCP", HEADER_ID, off, (int) headerLength(), h -> {
 			h.summaryf("%d → %d [%s] Seq=%d Ack=%d Win=%d",
 					srcPort(), dstPort(), flagsToString(),
 					seq(), ack(), window());
@@ -205,14 +205,19 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 						f.field("FIN", isFin() ? 1 : 0, bitsAt(off * 8L + 111, 1));
 					});
 
+			int computedChecksum = computeChecksum(off-20, hlenBytes(), false);
 			h.field("Window", window(), shortAt(off + 14));
 			h.fieldHex("Checksum", checksum(), 4, shortAt(off + 16));
+			h.fieldHex("Computed checksum", computedChecksum, 4, shortAt(off + 16));
 			h.field("Urgent Pointer", urgent(), shortAt(off + 18));
-		});
 
-		if (hasOptions()) {
-			options().buildDetail(b);
-		}
+			// Options as nested sections
+			if (hasOptions()) {
+			    for (TcpOptions.TcpOption opt : options()) {
+		            h.section(opt.optionName(), opt.optionAbbr(), s -> opt.buildDetail(s));
+			    }
+			}
+		});
 	}
 
 	/**
@@ -237,14 +242,14 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	public String checksumAsHex() {
 		return Checksums.checksumAsHex(checksum());
 	}
-	
+
 	/**
 	 * Computes the TCP checksum including IP pseudo-header.
 	 * 
 	 * <p>
-	 * The TCP checksum covers the pseudo-header (derived from the IP header),
-	 * the TCP header, and the TCP payload. The checksum field is treated as
-	 * zero during computation.
+	 * The TCP checksum covers the pseudo-header (derived from the IP header), the
+	 * TCP header, and the TCP payload. The checksum field is treated as zero during
+	 * computation.
 	 * </p>
 	 *
 	 * {@snippet :
@@ -263,12 +268,12 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	 * @return computed 16-bit checksum
 	 */
 	public int computeChecksum(long ipOffset, int tcpLen, boolean isIp6) {
-	    MemorySegment segment = getPacket().view().segment();
-	    
-	    return Checksums.computeTcpChecksum(
-	            segment, ipOffset,
-	            segment, headerOffset(),
-	            tcpLen, isIp6);
+		MemorySegment segment = getPacket().view().segment();
+
+		return Checksums.computeTcpChecksum(
+				segment, ipOffset,
+				segment, headerOffset(),
+				tcpLen, isIp6);
 	}
 
 	/**

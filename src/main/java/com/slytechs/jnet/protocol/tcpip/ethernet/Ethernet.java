@@ -26,10 +26,10 @@ import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.MemoryHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
 import com.slytechs.jnet.protocol.api.ExtensibleHeader;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 import com.slytechs.jnet.protocol.api.address.MacAddress;
 import com.slytechs.jnet.protocol.api.address.MacAddressMemory;
 import com.slytechs.jnet.protocol.api.checksum.Checksums;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -93,8 +93,8 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implements Detailable {
 
-	/** Protocol ID for Ethernet. */
-	public static final int ID = Tcpip.Constants.ETHERNET_ID;
+	/** Protocol HEADER_ID for Ethernet. */
+	public static final int HEADER_ID = ProtocolId.ETHERNET;
 
 	/** Ethernet header length in bytes (without FCS). */
 	public static final int HEADER_LENGTH = 14;
@@ -148,7 +148,7 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	 * Constructs a new Ethernet header.
 	 */
 	public Ethernet() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
@@ -448,7 +448,7 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("Ethernet", ID, off, HEADER_LENGTH, h -> {
+		b.header("Ethernet", "ETH", HEADER_ID, off, HEADER_LENGTH, h -> {
 			h.summaryf("%s → %s %s",
 					src(), dst(),
 					isEthernetII()

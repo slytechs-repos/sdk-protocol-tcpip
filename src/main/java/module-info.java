@@ -34,5 +34,8 @@ module com.slytechs.jnet.protocol.tcpip {
 			with com.slytechs.jnet.protocol.tcpip.impl.TcpipPlugin;
 	provides com.slytechs.jnet.protocol.api.table.TableProvider
 			with com.slytechs.jnet.protocol.tcpip.table.TcpIpTableProvider;
+	
+	provides com.slytechs.jnet.protocol.api.spi.ProtocolProvider
+			with com.slytechs.jnet.protocol.tcpip.impl.TcpipProtocolProvider;
 
 }

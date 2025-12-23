@@ -28,6 +28,7 @@ import com.slytechs.jnet.core.api.detail.render.TextRenderer;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.protocol.api.HeaderOption;
 import com.slytechs.jnet.protocol.api.HeaderOptions;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 
 /**
  * IPv4 options container with zero-allocation inner option classes.
@@ -191,9 +192,18 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
 		public int optionId() {
 			return type;
 		}
+
+		/**
+		 * @see com.slytechs.jnet.protocol.api.HeaderOption#optionAbbr()
+		 */
+		@Override
+		public String optionAbbr() {
+			throw new UnsupportedOperationException("not implemented yet");
+		}
     }
 
     public final class Security extends Ip4Option {
+    	public static final int HEADER_ID = ProtocolId.IPv4_OPT_SECURITY;
         private Security() { super(SEC); }
 
         public int level() {
@@ -226,7 +236,9 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
     }
 
     public final class LooseSourceRoute extends Ip4Option {
-        private LooseSourceRoute() { super(LSR); }
+		public static final int HEADER_ID = ProtocolId.IPv4_OPT_LSRR;
+
+	       private LooseSourceRoute() { super(LSR); }
 
         public int pointer() {
             return isPresent() ? get(offset + 2) & 0xFF : -1;
@@ -255,6 +267,8 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
     }
 
     public final class StrictSourceRoute extends Ip4Option {
+    	public static final int HEADER_ID = ProtocolId.IPv4_OPT_SSRR;
+
         private StrictSourceRoute() { super(SSR); }
 
         public int pointer() {
@@ -284,6 +298,7 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
     }
 
     public final class RecordRoute extends Ip4Option {
+    	public static final int HEADER_ID = ProtocolId.IPv4_OPT_RR;
         private RecordRoute() { super(RR); }
 
         public int pointer() {
@@ -320,6 +335,8 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
     }
 
     public final class Timestamp extends Ip4Option {
+    	public static final int HEADER_ID = ProtocolId.IPv4_OPT_TIMESTAMP;
+    	
         private Timestamp() { super(TS); }
 
         public int pointer() {
@@ -376,7 +393,7 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
                     h.field("Timestamp " + i, timestamp(idx), intAt(hdrOff + 4 + i * 4));
                 } else {
                     int entryOff = hdrOff + 4 + i * 8;
-                    h.section("Entry " + i, s -> {
+                    h.section("Entry " + i, "", s -> {
                         s.field("Address", formatIp4(address(idx)), intAt(entryOff));
                         s.field("Timestamp", timestamp(idx), intAt(entryOff + 4));
                     });
@@ -386,6 +403,7 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
     }
 
     public final class RouterAlert extends Ip4Option {
+    	public static final int HEADER_ID = ProtocolId.IPv4_OPT_RA;
         private RouterAlert() { super(RTRALT); }
 
         public int value() {
@@ -426,7 +444,7 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
             int hdrOff = IP4_HEADER_MIN + offset;
             buildTypeField(h, hdrOff);
             h.field("Length", length, byteAt(hdrOff + 1));
-            h.field("ID", id(), shortAt(hdrOff + 2));
+            h.field("HEADER_ID", id(), shortAt(hdrOff + 2));
             h.field("Outbound Hops", outboundHops(), shortAt(hdrOff + 4));
             h.field("Return Hops", returnHops(), shortAt(hdrOff + 6));
             h.field("Originator", formatIp4(originator()), intAt(hdrOff + 8));
@@ -481,7 +499,7 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
             int hdrOff = IP4_HEADER_MIN + offset;
             buildTypeField(h, hdrOff);
             h.field("Length", length, byteAt(hdrOff + 1));
-            h.field("Stream ID", streamId(), shortAt(hdrOff + 2));
+            h.field("Stream HEADER_ID", streamId(), shortAt(hdrOff + 2));
         }
     }
 
@@ -724,7 +742,7 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
             case EXTENDED_SECURITY -> "Extended Security";
             case COMMERCIAL_SECURITY -> "Commercial Security (CIPSO)";
             case RECORD_ROUTE -> "Record Route";
-            case STREAM_ID -> "Stream ID (obsolete)";
+            case STREAM_ID -> "Stream HEADER_ID (obsolete)";
             case STRICT_SOURCE_ROUTE -> "Strict Source Route";
             case ZSU -> "Experimental Measurement";
             case MTU_PROBE -> "MTU Probe";
@@ -809,7 +827,7 @@ public final class Ip4Options extends ByteBuf implements HeaderOptions<Ip4Option
 
         for (Ip4Option opt : this) {
             int hdrOff = IP4_HEADER_MIN + opt.offset;
-            b.header("IPv4 Option - " + opt.optionName(), opt.type, hdrOff, opt.length, opt::buildDetail);
+            b.header("IPv4 Option - " + opt.optionName(), "IPv4:Opt", opt.type, hdrOff, opt.length, opt::buildDetail);
         }
     }
 

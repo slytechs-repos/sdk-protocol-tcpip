@@ -27,7 +27,7 @@ import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
 import com.slytechs.jnet.protocol.api.FixedHeader;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 import com.slytechs.jnet.protocol.tcpip.ip.IpProtocolResolver;
 
 import static java.lang.foreign.MemoryLayout.*;
@@ -37,11 +37,12 @@ import static java.lang.foreign.MemoryLayout.*;
  * 
  * <p>
  * The Authentication Header provides data origin authentication, data
- * integrity, and optional anti-replay protection for IP datagrams. AH does
- * not provide confidentiality (encryption) - use ESP for that.
+ * integrity, and optional anti-replay protection for IP datagrams. AH does not
+ * provide confidentiality (encryption) - use ESP for that.
  * </p>
  * 
  * <h2>Header Format</h2>
+ * 
  * <pre>
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -94,12 +95,13 @@ import static java.lang.foreign.MemoryLayout.*;
  * @author Sly Technologies Inc.
  * @see Ipsec
  * @see IpsecEsp
- * @see <a href="https://tools.ietf.org/html/rfc4302">RFC 4302 - IP Authentication Header</a>
+ * @see <a href="https://tools.ietf.org/html/rfc4302">RFC 4302 - IP
+ *      Authentication Header</a>
  */
 public class IpsecAh extends FixedHeader implements Detailable {
 
-	/** Protocol ID for IPsec AH. */
-	public static final int ID = Tcpip.Constants.IPSEC_AH_ID;
+	/** Protocol HEADER_ID for IPsec AH. */
+	public static final int HEADER_ID = ProtocolId.AH;
 
 	/** Minimum AH header length in bytes (no ICV). */
 	public static final int MIN_HEADER_LENGTH = 12;
@@ -110,8 +112,7 @@ public class IpsecAh extends FixedHeader implements Detailable {
 			U8_BE.withName("hdr_payload_len"),
 			U16_BE.withName("hdr_reserved"),
 			U32_BE.withName("hdr_spi"),
-			U32_BE.withName("hdr_sequence")
-	);
+			U32_BE.withName("hdr_sequence"));
 
 	private static final ByteHandle NEXT_HEADER = new ByteHandle(LAYOUT, "hdr_next_header");
 	private static final ByteHandle PAYLOAD_LEN = new ByteHandle(LAYOUT, "hdr_payload_len");
@@ -123,16 +124,15 @@ public class IpsecAh extends FixedHeader implements Detailable {
 	 * Constructs a new IPsec AH header.
 	 */
 	public IpsecAh() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
 	 * Returns the Next Header field (8 bits).
 	 * 
 	 * <p>
-	 * Identifies the type of the next payload following the Authentication
-	 * Header. Uses the same values as the IPv4 Protocol or IPv6 Next Header
-	 * fields.
+	 * Identifies the type of the next payload following the Authentication Header.
+	 * Uses the same values as the IPv4 Protocol or IPv6 Next Header fields.
 	 * </p>
 	 *
 	 * @return the next header protocol number
@@ -155,9 +155,8 @@ public class IpsecAh extends FixedHeader implements Detailable {
 	 * Returns the Payload Length field (8 bits).
 	 * 
 	 * <p>
-	 * This field specifies the length of the AH header in 32-bit words,
-	 * minus 2. For example, a value of 4 indicates a 24-byte header
-	 * ((4 + 2) * 4 = 24).
+	 * This field specifies the length of the AH header in 32-bit words, minus 2.
+	 * For example, a value of 4 indicates a 24-byte header ((4 + 2) * 4 = 24).
 	 * </p>
 	 *
 	 * @return the payload length field value
@@ -203,8 +202,8 @@ public class IpsecAh extends FixedHeader implements Detailable {
 	 * 
 	 * <p>
 	 * The SPI is an arbitrary 32-bit value that, in combination with the
-	 * destination IP address and security protocol (AH), uniquely identifies
-	 * the Security Association (SA) for this datagram.
+	 * destination IP address and security protocol (AH), uniquely identifies the
+	 * Security Association (SA) for this datagram.
 	 * </p>
 	 * 
 	 * <p>
@@ -231,9 +230,9 @@ public class IpsecAh extends FixedHeader implements Detailable {
 	 * Returns the Sequence Number (32 bits).
 	 * 
 	 * <p>
-	 * An unsigned 32-bit counter value that increases with each packet sent
-	 * using this SA. Used for anti-replay protection. The receiver maintains
-	 * a sliding window to detect replayed packets.
+	 * An unsigned 32-bit counter value that increases with each packet sent using
+	 * this SA. Used for anti-replay protection. The receiver maintains a sliding
+	 * window to detect replayed packets.
 	 * </p>
 	 *
 	 * @return the sequence number
@@ -278,8 +277,8 @@ public class IpsecAh extends FixedHeader implements Detailable {
 	 * Returns the ICV (Integrity Check Value) length in bytes.
 	 * 
 	 * <p>
-	 * The ICV length is the total header length minus the fixed 12-byte
-	 * portion (Next Header + Payload Len + Reserved + SPI + Sequence).
+	 * The ICV length is the total header length minus the fixed 12-byte portion
+	 * (Next Header + Payload Len + Reserved + SPI + Sequence).
 	 * </p>
 	 *
 	 * @return the ICV length in bytes
@@ -301,9 +300,9 @@ public class IpsecAh extends FixedHeader implements Detailable {
 	 * Returns the ICV (Integrity Check Value) as a byte array.
 	 * 
 	 * <p>
-	 * The ICV is the authentication data computed over the IP header,
-	 * AH header (with ICV set to zero), and payload using the algorithm
-	 * specified in the Security Association.
+	 * The ICV is the authentication data computed over the IP header, AH header
+	 * (with ICV set to zero), and payload using the algorithm specified in the
+	 * Security Association.
 	 * </p>
 	 *
 	 * @return the ICV bytes, or empty array if no ICV
@@ -353,7 +352,7 @@ public class IpsecAh extends FixedHeader implements Detailable {
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("IPsec Authentication Header", ID, off, (int) headerLength(), h -> {
+		b.header("IPsec Authentication Header", "AH", HEADER_ID, off, (int) headerLength(), h -> {
 			h.summaryf("SPI=%s Seq=%d → %s",
 					Ipsec.spiAsHex(spi()),
 					sequenceNumberUnsigned(),

@@ -25,7 +25,7 @@ import com.slytechs.jnet.core.api.detail.DetailBuilder;
 import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
 import com.slytechs.jnet.protocol.api.FixedHeader;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -33,13 +33,14 @@ import static java.lang.foreign.MemoryLayout.*;
  * IPsec Encapsulating Security Payload (ESP) header as defined in RFC 4303.
  * 
  * <p>
- * ESP provides confidentiality (encryption), data origin authentication,
- * data integrity, and anti-replay protection for IP datagrams. Unlike AH,
- * ESP encrypts the payload, making the contents unreadable without the
- * appropriate keys.
+ * ESP provides confidentiality (encryption), data origin authentication, data
+ * integrity, and anti-replay protection for IP datagrams. Unlike AH, ESP
+ * encrypts the payload, making the contents unreadable without the appropriate
+ * keys.
  * </p>
  * 
  * <h2>Packet Format</h2>
+ * 
  * <pre>
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -66,23 +67,27 @@ import static java.lang.foreign.MemoryLayout.*;
  * 
  * <h2>Header vs Trailer</h2>
  * <p>
- * ESP has both a header (SPI + Sequence Number) and a trailer (Padding +
- * Pad Length + Next Header + ICV). The trailer is encrypted (except ICV)
- * and cannot be parsed without decryption. This class only provides access
- * to the unencrypted header portion.
+ * ESP has both a header (SPI + Sequence Number) and a trailer (Padding + Pad
+ * Length + Next Header + ICV). The trailer is encrypted (except ICV) and cannot
+ * be parsed without decryption. This class only provides access to the
+ * unencrypted header portion.
  * </p>
  * 
  * <h2>Encryption and Authentication</h2>
  * <ul>
- * <li><b>Encryption</b> covers: IV + Payload + Padding + Pad Length + Next Header</li>
- * <li><b>Authentication</b> covers: SPI + Sequence + IV + Payload + Padding + Pad Length + Next Header</li>
- * <li><b>ICV</b> is outside both encryption and the authenticated region calculation</li>
+ * <li><b>Encryption</b> covers: IV + Payload + Padding + Pad Length + Next
+ * Header</li>
+ * <li><b>Authentication</b> covers: SPI + Sequence + IV + Payload + Padding +
+ * Pad Length + Next Header</li>
+ * <li><b>ICV</b> is outside both encryption and the authenticated region
+ * calculation</li>
  * </ul>
  * 
  * <h2>Common Algorithms</h2>
  * <ul>
  * <li><b>Encryption:</b> AES-CBC, AES-CTR, AES-GCM, ChaCha20-Poly1305</li>
- * <li><b>Authentication:</b> HMAC-SHA-256, HMAC-SHA-384, HMAC-SHA-512, AES-GMAC</li>
+ * <li><b>Authentication:</b> HMAC-SHA-256, HMAC-SHA-384, HMAC-SHA-512,
+ * AES-GMAC</li>
  * <li><b>Combined (AEAD):</b> AES-GCM, ChaCha20-Poly1305</li>
  * </ul>
  * 
@@ -100,12 +105,13 @@ import static java.lang.foreign.MemoryLayout.*;
  * @author Sly Technologies Inc.
  * @see Ipsec
  * @see IpsecAh
- * @see <a href="https://tools.ietf.org/html/rfc4303">RFC 4303 - IP Encapsulating Security Payload</a>
+ * @see <a href="https://tools.ietf.org/html/rfc4303">RFC 4303 - IP
+ *      Encapsulating Security Payload</a>
  */
 public class IpsecEsp extends FixedHeader implements Detailable {
 
-	/** Protocol ID for IPsec ESP. */
-	public static final int ID = Tcpip.Constants.IPSEC_ESP_ID;
+	/** Protocol HEADER_ID for IPsec ESP. */
+	public static final int HEADER_ID = ProtocolId.ESP;
 
 	/** ESP header length in bytes (SPI + Sequence Number only). */
 	public static final int HEADER_LENGTH = 8;
@@ -113,8 +119,7 @@ public class IpsecEsp extends FixedHeader implements Detailable {
 	/** ESP header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
 			U32_BE.withName("hdr_spi"),
-			U32_BE.withName("hdr_sequence")
-	);
+			U32_BE.withName("hdr_sequence"));
 
 	private static final IntHandle SPI = new IntHandle(LAYOUT, "hdr_spi");
 	private static final IntHandle SEQUENCE = new IntHandle(LAYOUT, "hdr_sequence");
@@ -123,7 +128,7 @@ public class IpsecEsp extends FixedHeader implements Detailable {
 	 * Constructs a new IPsec ESP header.
 	 */
 	public IpsecEsp() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
@@ -131,8 +136,8 @@ public class IpsecEsp extends FixedHeader implements Detailable {
 	 * 
 	 * <p>
 	 * The SPI is an arbitrary 32-bit value that, in combination with the
-	 * destination IP address and security protocol (ESP), uniquely identifies
-	 * the Security Association (SA) for this datagram.
+	 * destination IP address and security protocol (ESP), uniquely identifies the
+	 * Security Association (SA) for this datagram.
 	 * </p>
 	 * 
 	 * <p>
@@ -159,15 +164,14 @@ public class IpsecEsp extends FixedHeader implements Detailable {
 	 * Returns the Sequence Number (32 bits).
 	 * 
 	 * <p>
-	 * An unsigned 32-bit counter value that increases with each packet sent
-	 * using this SA. Used for anti-replay protection. The receiver maintains
-	 * a sliding window to detect replayed packets.
+	 * An unsigned 32-bit counter value that increases with each packet sent using
+	 * this SA. Used for anti-replay protection. The receiver maintains a sliding
+	 * window to detect replayed packets.
 	 * </p>
 	 * 
 	 * <p>
-	 * Extended Sequence Numbers (ESN) use a 64-bit counter, where the high
-	 * 32 bits are implicit (not transmitted). This field contains only the
-	 * low 32 bits.
+	 * Extended Sequence Numbers (ESN) use a 64-bit counter, where the high 32 bits
+	 * are implicit (not transmitted). This field contains only the low 32 bits.
 	 * </p>
 	 *
 	 * @return the sequence number
@@ -207,9 +211,9 @@ public class IpsecEsp extends FixedHeader implements Detailable {
 	 * Returns the offset to the encrypted payload.
 	 * 
 	 * <p>
-	 * The encrypted portion starts immediately after the ESP header (SPI +
-	 * Sequence Number). This includes the IV (if any), encrypted payload,
-	 * padding, pad length, and next header.
+	 * The encrypted portion starts immediately after the ESP header (SPI + Sequence
+	 * Number). This includes the IV (if any), encrypted payload, padding, pad
+	 * length, and next header.
 	 * </p>
 	 *
 	 * @return offset to encrypted payload relative to packet start
@@ -225,7 +229,7 @@ public class IpsecEsp extends FixedHeader implements Detailable {
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("IPsec Encapsulating Security Payload", ID, off, HEADER_LENGTH, h -> {
+		b.header("IPsec Encapsulating Security Payload", "ESP", HEADER_ID, off, HEADER_LENGTH, h -> {
 			h.summaryf("SPI=%s Seq=%d",
 					Ipsec.spiAsHex(spi()),
 					sequenceNumberUnsigned());
@@ -233,7 +237,7 @@ public class IpsecEsp extends FixedHeader implements Detailable {
 			h.fieldHex("SPI", spi(), 8, intAt(off));
 			h.field("Sequence Number", sequenceNumberUnsigned(), intAt(off + 4));
 
-			h.section("Encrypted Payload", s -> {
+			h.section("Encrypted Payload", "Encrypted", s -> {
 				s.field("Offset", encryptedPayloadOffset());
 				s.field("Note", "Payload encrypted - cannot parse Next Header without decryption");
 			});

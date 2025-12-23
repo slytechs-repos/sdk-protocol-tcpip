@@ -25,7 +25,7 @@ import com.slytechs.jnet.core.api.detail.DetailBuilder;
 import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
 import com.slytechs.jnet.protocol.api.FixedHeader;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -71,7 +71,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * {@snippet :
  * Vlan vlan = packet.getHeader(new Vlan());
  * 
- * System.out.println("VLAN ID: " + vlan.vid());
+ * System.out.println("VLAN HEADER_ID: " + vlan.vid());
  * System.out.println("Priority: " + vlan.pcp());
  * System.out.println("Inner Type: " + EtherTypeResolver.resolveAbbr(vlan.etherType()));
  * }
@@ -83,8 +83,8 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public class Vlan extends FixedHeader implements Detailable {
 
-	/** Protocol ID for VLAN. */
-	public static final int ID = Tcpip.Constants.VLAN_ID;
+	/** Protocol HEADER_ID for VLAN. */
+	public static final int ID = ProtocolId.VLAN;
 
 	/** VLAN header length in bytes. */
 	public static final int HEADER_LENGTH = 4;
@@ -101,7 +101,7 @@ public class Vlan extends FixedHeader implements Detailable {
 	/** VID for priority-tagged frames (no VLAN membership). */
 	public static final int VID_PRIORITY = 0;
 
-	/** Default VLAN ID. */
+	/** Default VLAN HEADER_ID. */
 	public static final int VID_DEFAULT = 1;
 
 	/** Reserved VID (must not be used). */
@@ -219,7 +219,7 @@ public class Vlan extends FixedHeader implements Detailable {
 	/**
 	 * Returns the VLAN Identifier field (12 bits).
 	 *
-	 * @return the VLAN ID (0-4095)
+	 * @return the VLAN HEADER_ID (0-4095)
 	 * @see #VID_PRIORITY
 	 * @see #VID_DEFAULT
 	 * @see #VID_RESERVED
@@ -231,7 +231,7 @@ public class Vlan extends FixedHeader implements Detailable {
 	/**
 	 * Sets the VLAN Identifier field.
 	 *
-	 * @param vid the VLAN ID (0-4095)
+	 * @param vid the VLAN HEADER_ID (0-4095)
 	 */
 	public void setVid(int vid) {
 		int tci = tci();
@@ -313,7 +313,7 @@ public class Vlan extends FixedHeader implements Detailable {
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("802.1Q Virtual LAN", ID, off, HEADER_LENGTH, h -> {
+		b.header("802.1Q Virtual LAN", "VLAN", ID, off, HEADER_LENGTH, h -> {
 			h.summaryf("VID=%d PCP=%d %s",
 					vid(), pcp(),
 					EtherTypeResolver.resolveAbbrOrHex(etherType()));
@@ -323,7 +323,7 @@ public class Vlan extends FixedHeader implements Detailable {
 					shortAt(off), f -> {
 						f.field("Priority", pcp(), pcpToString(), bitsAt(off * 8L, 3));
 						f.field("DEI", dei() ? 1 : 0, dei() ? "Eligible" : "Not eligible", bitsAt(off * 8L + 3, 1));
-						f.field("VLAN ID", vid(), bitsAt(off * 8L + 4, 12));
+						f.field("VLAN HEADER_ID", vid(), bitsAt(off * 8L + 4, 12));
 					});
 
 			h.fieldHex("Type", etherType(), 4,

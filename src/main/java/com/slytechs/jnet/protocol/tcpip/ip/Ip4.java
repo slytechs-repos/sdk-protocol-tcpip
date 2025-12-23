@@ -26,11 +26,11 @@ import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.MemoryHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 import com.slytechs.jnet.protocol.api.VariableHeader;
 import com.slytechs.jnet.protocol.api.address.Ip4Address;
 import com.slytechs.jnet.protocol.api.address.Ip4AddressMemory;
 import com.slytechs.jnet.protocol.api.checksum.Checksums;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -89,8 +89,8 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 
-	/** Protocol ID for IPv4. */
-	public static final int ID = Tcpip.Constants.IPv4_ID;
+	/** Protocol HEADER_ID for IPv4. */
+	public static final int HEADER_ID = ProtocolId.IPv4;
 
 	/** Minimum IPv4 header length in bytes (without options). */
 	public static final int MIN_HEADER_LENGTH = 20;
@@ -100,16 +100,16 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 
 	/** IPv4 header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
-			U8_BE.withName("hdr_version_ihl"),
-			U8_BE.withName("hdr_type_of_service"),
-			U16_BE.withName("hdr_total_length"),
-			U16_BE.withName("hdr_identification"),
-			U16_BE.withName("hdr_flags_frag_offset"),
-			U8_BE.withName("hdr_time_to_live"),
-			U8_BE.withName("hdr_protocol"),
-			U16_BE.withName("hdr_checksum"),
-			Ip4AddressMemory.LAYOUT.withName("hdr_src_addr"),
-			Ip4AddressMemory.LAYOUT.withName("hdr_dst_addr"));
+			U8_BE_A1.withName("hdr_version_ihl"),
+			U8_BE_A1.withName("hdr_type_of_service"),
+			U16_BE_A1.withName("hdr_total_length"),
+			U16_BE_A1.withName("hdr_identification"),
+			U16_BE_A1.withName("hdr_flags_frag_offset"),
+			U8_BE_A1.withName("hdr_time_to_live"),
+			U8_BE_A1.withName("hdr_protocol"),
+			U16_BE_A1.withName("hdr_checksum"),
+			Ip4AddressMemory.LAYOUT.withName("hdr_src_addr").withByteAlignment(1),
+			Ip4AddressMemory.LAYOUT.withName("hdr_dst_addr").withByteAlignment(1)).withByteAlignment(1);
 
 	private static final ByteHandle VERSION_IHL = new ByteHandle(LAYOUT, "hdr_version_ihl");
 	private static final ByteHandle TOS = new ByteHandle(LAYOUT, "hdr_type_of_service");
@@ -146,7 +146,7 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 	 * Constructs a new IPv4 header.
 	 */
 	public Ip4() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
@@ -156,7 +156,8 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("Internet Protocol version 4", ID, off, (int) headerLength(), h -> {
+		b.header("Internet Protocol version 4", "IPv4", HEADER_ID, off, (int) headerLength(), h -> {
+		    h.summaryf("%s → %s %s", src(), dst(), IpProtocolResolver.resolveAbbrOrNumber(protocol()));
 
 			h.expandField("Version/IHL", versionIhl(),
 					String.format("Version=%d, IHL=%d", version(), ihl()),
@@ -186,10 +187,13 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 						f.field("Fragment Offset", fragOffset(), fragOffsetBytes() + " bytes", bitsAt((off + 6) * 8L
 								+ 3, 13));
 					});
+			
+			int computedChecksum = computeChecksum();
 
 			h.field("Time to Live", ttl(), byteAt(off + 8));
 			h.field("Protocol", protocol(), IpProtocolResolver.resolveAbbrOrNumber(protocol()), byteAt(off + 9));
 			h.fieldHex("Checksum", checksum(), 4, shortAt(off + 10));
+			h.fieldHex("Computed checksum", computedChecksum, 4, shortAt(off + 10));
 			h.field("Source", src().toString(), intAt(off + 12));
 			h.field("Destination", dst().toString(), intAt(off + 16));
 		});
@@ -675,7 +679,7 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 	 *
 	 * @param id the identification value
 	 */
-	public void setId(int id) {
+	public void setHeaderId(int id) {
 		IDENTIFICATION.setShort(view(), 0, (short) id);
 	}
 

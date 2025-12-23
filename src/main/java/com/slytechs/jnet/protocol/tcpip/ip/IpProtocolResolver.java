@@ -32,8 +32,8 @@ import java.util.Properties;
  */
 public final class IpProtocolResolver {
 
-    private static final String FULL_RESOURCE = "/tables/protocol/tcpip/ip_protocol.properties";
-    private static final String ABBR_RESOURCE = "/tables/protocol/tcpip/ip_protocol_abbr.properties";
+    private static final String FULL_RESOURCE = "/tables/protocol/tcpip/ipv4_proto.properties";
+    private static final String ABBR_RESOURCE = "/tables/protocol/tcpip/ipv4_proto_abbr.properties";
     private static final String KEY_PREFIX = "ip_protocol.";
 
     private static volatile Map<Integer, String> fullNames;

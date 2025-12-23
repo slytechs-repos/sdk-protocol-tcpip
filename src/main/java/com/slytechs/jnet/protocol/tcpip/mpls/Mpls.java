@@ -25,7 +25,7 @@ import com.slytechs.jnet.core.api.detail.DetailBuilder;
 import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
 import com.slytechs.jnet.protocol.api.FixedHeader;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -95,8 +95,8 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public class Mpls extends FixedHeader implements Detailable {
 
-	/** Protocol ID for MPLS. */
-	public static final int ID = Tcpip.Constants.MPLS_ID;
+	/** Protocol HEADER_ID for MPLS. */
+	public static final int HEADER_ID = ProtocolId.MPLS;
 
 	/** MPLS label header length in bytes. */
 	public static final int HEADER_LENGTH = 4;
@@ -153,7 +153,7 @@ public class Mpls extends FixedHeader implements Detailable {
 	 * Constructs a new MPLS header.
 	 */
 	public Mpls() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
@@ -391,7 +391,7 @@ public class Mpls extends FixedHeader implements Detailable {
 		int off = (int) headerOffset();
 		String labelDesc = labelToString();
 
-		b.header("Multi-Protocol Label Switching", ID, off, HEADER_LENGTH, h -> {
+		b.header("Multi-Protocol Label Switching", "MPLS", HEADER_ID, off, HEADER_LENGTH, h -> {
 			h.summaryf("Label=%d TC=%d S=%d TTL=%d%s",
 					label(), tc(), s(), ttl(),
 					labelDesc != null ? " [" + labelDesc + "]" : "");

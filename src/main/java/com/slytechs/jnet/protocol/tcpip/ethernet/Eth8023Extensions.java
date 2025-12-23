@@ -28,6 +28,7 @@ import com.slytechs.jnet.core.api.detail.render.TextRenderer;
 import com.slytechs.jnet.core.api.memory.ByteBuf;
 import com.slytechs.jnet.protocol.api.HeaderExtension;
 import com.slytechs.jnet.protocol.api.HeaderExtensions;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 
 /**
  * IEEE 802.3 Ethernet extensions container with zero-allocation inner classes.
@@ -41,8 +42,8 @@ import com.slytechs.jnet.protocol.api.HeaderExtensions;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-public final class Eth8023Extensions extends ByteBuf implements HeaderExtensions<Eth8023Extensions.Eth8023Extension>,
-		Detailable,
+public final class Eth8023Extensions extends ByteBuf
+		implements HeaderExtensions<Eth8023Extensions.Eth8023Extension>, Detailable,
 		Iterable<Eth8023Extensions.Eth8023Extension> {
 
 	public static final int LLC = 1;
@@ -125,6 +126,8 @@ public final class Eth8023Extensions extends ByteBuf implements HeaderExtensions
 	}
 
 	public final class Llc extends Eth8023Extension {
+		public static final int HEADER_ID = ProtocolId.LLC;
+		
 		private Llc() {
 			super(LLC);
 		}
@@ -209,6 +212,7 @@ public final class Eth8023Extensions extends ByteBuf implements HeaderExtensions
 	}
 
 	public final class Snap extends Eth8023Extension {
+		public static final int HEADER_ID = ProtocolId.SNAP;
 		private Snap() {
 			super(SNAP);
 		}
@@ -245,7 +249,7 @@ public final class Eth8023Extensions extends ByteBuf implements HeaderExtensions
 			if (ouiName != null) {
 				h.field("Organization", ouiName);
 			}
-			h.fieldHex("Protocol ID", protocolId(), 4, shortAt(hdrOff + 3));
+			h.fieldHex("Protocol HEADER_ID", protocolId(), 4, shortAt(hdrOff + 3));
 			String protoName = protocolName(protocolId());
 			if (protoName != null) {
 				h.field("Protocol", protoName);
@@ -467,7 +471,7 @@ public final class Eth8023Extensions extends ByteBuf implements HeaderExtensions
 
 		for (Eth8023Extension ext : this) {
 			int hdrOff = ETH_HEADER_LENGTH + ext.offset;
-			b.header("802.3 Extension - " + ext.extensionName(), ext.id, hdrOff, ext.length, ext::buildDetail);
+			b.header("802.3 Extension - " + ext.extensionName(), "802.2", ext.id, hdrOff, ext.length, ext::buildDetail);
 		}
 	}
 

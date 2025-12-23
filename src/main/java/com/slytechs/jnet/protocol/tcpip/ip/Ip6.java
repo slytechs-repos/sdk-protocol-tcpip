@@ -28,9 +28,9 @@ import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.IntHandle;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ShortHandle;
 import com.slytechs.jnet.protocol.api.ExtensibleHeader;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 import com.slytechs.jnet.protocol.api.address.Ip6Address;
 import com.slytechs.jnet.protocol.api.address.Ip6AddressMemory;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -102,8 +102,8 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip, Detailable {
 
-	/** Protocol ID for IPv6. */
-	public static final int ID = Tcpip.Constants.IPv6_ID;
+	/** Protocol HEADER_ID for IPv6. */
+	public static final int HEADER_ID = ProtocolId.IPv6;
 
 	/** IPv6 header length in bytes (fixed size). */
 	public static final int HEADER_LENGTH = 40;
@@ -133,7 +133,7 @@ public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip, Detailab
 	 * Constructs a new IPv6 header.
 	 */
 	public Ip6() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
@@ -580,7 +580,7 @@ public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip, Detailab
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("Internet Protocol version 6", ID, off, HEADER_LENGTH, h -> {
+		b.header("Internet Protocol version 6", "IPv6", HEADER_ID, off, HEADER_LENGTH, h -> {
 
 			h.expandField("Version/Traffic Class/Flow Label", vtcFlow(),
 					String.format("Version=%d, TC=%d, Flow=%d", version(), trafficClass(), flowLabel()),

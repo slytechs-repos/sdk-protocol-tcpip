@@ -25,7 +25,7 @@ import com.slytechs.jnet.core.api.detail.DetailBuilder;
 import com.slytechs.jnet.core.api.detail.Detailable;
 import com.slytechs.jnet.core.api.memory.MemoryHandle.ByteHandle;
 import com.slytechs.jnet.protocol.api.FixedHeader;
-import com.slytechs.jnet.protocol.tcpip.Tcpip;
+import com.slytechs.jnet.protocol.api.ProtocolId;
 import com.slytechs.jnet.protocol.tcpip.ip.IpProtocolResolver;
 
 import static java.lang.foreign.MemoryLayout.*;
@@ -35,11 +35,12 @@ import static java.lang.foreign.MemoryLayout.*;
  * 
  * <p>
  * The ESP trailer appears at the end of the decrypted ESP payload and contains
- * the padding, pad length, and next header fields. This class is used after
- * ESP decryption to parse the trailer fields.
+ * the padding, pad length, and next header fields. This class is used after ESP
+ * decryption to parse the trailer fields.
  * </p>
  * 
  * <h2>Trailer Format</h2>
+ * 
  * <pre>
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |                    Payload Data (decrypted)                   |
@@ -53,8 +54,8 @@ import static java.lang.foreign.MemoryLayout.*;
  * 
  * <h2>Usage</h2>
  * <p>
- * This class is typically used after decrypting an ESP payload. The trailer
- * is located at the end of the decrypted data, before any ICV.
+ * This class is typically used after decrypting an ESP payload. The trailer is
+ * located at the end of the decrypted data, before any ICV.
  * </p>
  * 
  * {@snippet :
@@ -74,8 +75,8 @@ import static java.lang.foreign.MemoryLayout.*;
  */
 public class IpsecEspTrailer extends FixedHeader implements Detailable {
 
-	/** Protocol ID for IPsec ESP Trailer. */
-	public static final int ID = Tcpip.Constants.IPSEC_ESP_TRAILER_ID;
+	/** Protocol HEADER_ID for IPsec ESP Trailer. */
+	public static final int HEADER_ID = ProtocolId.ESP_TRAILER;
 
 	/** Minimum trailer length (Pad Length + Next Header only). */
 	public static final int MIN_TRAILER_LENGTH = 2;
@@ -86,8 +87,7 @@ public class IpsecEspTrailer extends FixedHeader implements Detailable {
 	/** ESP Trailer memory layout (fixed portion at end). */
 	public static final MemoryLayout LAYOUT = structLayout(
 			U8_BE.withName("trl_pad_length"),
-			U8_BE.withName("trl_next_header")
-	);
+			U8_BE.withName("trl_next_header"));
 
 	private static final ByteHandle PAD_LENGTH = new ByteHandle(LAYOUT, "trl_pad_length");
 	private static final ByteHandle NEXT_HEADER = new ByteHandle(LAYOUT, "trl_next_header");
@@ -96,16 +96,16 @@ public class IpsecEspTrailer extends FixedHeader implements Detailable {
 	 * Constructs a new IPsec ESP Trailer.
 	 */
 	public IpsecEspTrailer() {
-		super(ID, LAYOUT);
+		super(HEADER_ID, LAYOUT);
 	}
 
 	/**
 	 * Returns the Pad Length field (8 bits).
 	 * 
 	 * <p>
-	 * Indicates the number of padding bytes preceding this field. Padding
-	 * is used to align the encrypted data to the cipher block size and to
-	 * ensure the Pad Length and Next Header fields are right-aligned.
+	 * Indicates the number of padding bytes preceding this field. Padding is used
+	 * to align the encrypted data to the cipher block size and to ensure the Pad
+	 * Length and Next Header fields are right-aligned.
 	 * </p>
 	 *
 	 * @return the padding length (0-255)
@@ -127,8 +127,8 @@ public class IpsecEspTrailer extends FixedHeader implements Detailable {
 	 * Returns the Next Header field (8 bits).
 	 * 
 	 * <p>
-	 * Identifies the type of the payload data. Uses the same values as the
-	 * IPv4 Protocol or IPv6 Next Header fields.
+	 * Identifies the type of the payload data. Uses the same values as the IPv4
+	 * Protocol or IPv6 Next Header fields.
 	 * </p>
 	 *
 	 * @return the next header protocol number
@@ -163,7 +163,7 @@ public class IpsecEspTrailer extends FixedHeader implements Detailable {
 	public void buildDetail(DetailBuilder b) {
 		int off = (int) headerOffset();
 
-		b.header("IPsec ESP Trailer (Decrypted)", ID, off, MIN_TRAILER_LENGTH, h -> {
+		b.header("IPsec ESP Trailer (Decrypted)", "Trailer", HEADER_ID, off, MIN_TRAILER_LENGTH, h -> {
 			h.summaryf("PadLen=%d → %s",
 					padLength(),
 					IpProtocolResolver.resolveAbbrOrNumber(nextHeader()));
