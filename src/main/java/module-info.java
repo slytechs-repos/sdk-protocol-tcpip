@@ -19,23 +19,23 @@
 /**
  * 
  */
-module com.slytechs.jnet.protocol.tcpip {
+module com.slytechs.sdk.protocol.tcpip {
 
-	exports com.slytechs.jnet.protocol.tcpip;
-	exports com.slytechs.jnet.protocol.tcpip.ethernet;
-	exports com.slytechs.jnet.protocol.tcpip.ip;
-	exports com.slytechs.jnet.protocol.tcpip.tcp;
+	exports com.slytechs.sdk.protocol.tcpip;
+	exports com.slytechs.sdk.protocol.tcpip.ethernet;
+	exports com.slytechs.sdk.protocol.tcpip.ip;
+	exports com.slytechs.sdk.protocol.tcpip.tcp;
 
-	requires com.slytechs.jnet.core.api;
-	requires transitive com.slytechs.jnet.protocol.api;
+	requires com.slytechs.sdk.common;
+	requires transitive com.slytechs.sdk.protocol.core;
 	requires java.logging;
 
-	provides com.slytechs.jnet.protocol.api.pack.ProtocolPackPlugin
-			with com.slytechs.jnet.protocol.tcpip.impl.TcpipPlugin;
-	provides com.slytechs.jnet.protocol.api.table.TableProvider
-			with com.slytechs.jnet.protocol.tcpip.table.TcpIpTableProvider;
+	provides com.slytechs.sdk.protocol.core.pack.ProtocolPackPlugin
+			with com.slytechs.sdk.protocol.tcpip.impl.TcpipPlugin;
+	provides com.slytechs.sdk.protocol.core.table.TableProvider
+			with com.slytechs.sdk.protocol.tcpip.table.TcpIpTableProvider;
 	
-	provides com.slytechs.jnet.protocol.api.spi.ProtocolProvider
-			with com.slytechs.jnet.protocol.tcpip.impl.TcpipProtocolProvider;
+	provides com.slytechs.sdk.protocol.core.spi.ProtocolProvider
+			with com.slytechs.sdk.protocol.tcpip.impl.TcpipProtocolProvider;
 
 }

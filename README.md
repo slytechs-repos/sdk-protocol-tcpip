@@ -10,26 +10,53 @@ TCP/IP protocol pack for the Sly Technologies Network SDK.
 
 ## Table of Contents
 
-1. [Overview](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#overview)
+1. [Quick Start](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#quick-start)
 2. [Protocols](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#protocols)
-3. [Quick Start](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#quick-start)
-4. [Examples](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#examples)
-5. [Protocol Details](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#protocol-details)
-6. [Installation](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#installation)
-7. [Documentation](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#documentation)
+3. [Examples](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#examples)
+4. [Protocol Details](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#protocol-details)
+5. [Advanced Installation](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#advanced-installation)
+6. [Documentation](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#documentation)
 
 ------
 
-## Overview
+## Quick Start
 
-The sdk-protocol-tcpip module provides:
+### Installation (Recommended)
 
-- **Layer 2** - Ethernet, 802.3, VLAN (802.1Q), OUI resolution
-- **Layer 3** - IPv4, IPv6, MPLS, IPsec (AH, ESP)
-- **Layer 4** - TCP (with options), UDP
-- **Extensions** - IPv6 extension headers, TCP options, IP options
+Use the starter which pulls all dependencies:
 
-All protocols follow the zero-allocation pattern for high-performance packet processing.
+```xml
+<dependency>
+    <groupId>com.slytechs.sdk</groupId>
+    <artifactId>jnetpcap-sdk</artifactId>
+    <version>3.0.0</version>
+</dependency>
+```
+
+The `jnetpcap-sdk` starter includes `sdk-protocol-tcpip` automatically.
+
+### Basic Usage
+
+```java
+import com.slytechs.sdk.protocol.tcpip.ip.Ip4;
+import com.slytechs.sdk.protocol.tcpip.tcp.Tcp;
+
+// Pre-allocate headers outside hot path
+Ip4 ip4 = new Ip4();
+Tcp tcp = new Tcp();
+
+pcap.dispatch(count, packet -> {
+    
+    // hasHeader() checks presence AND binds header
+    if (packet.hasHeader(ip4)) {
+        System.out.printf("IP: %s -> %s%n", ip4.src(), ip4.dst());
+    }
+    
+    if (packet.hasHeader(tcp)) {
+        System.out.printf("TCP: %d -> %d%n", tcp.srcPort(), tcp.dstPort());
+    }
+});
+```
 
 ------
 
@@ -74,102 +101,9 @@ All protocols follow the zero-allocation pattern for high-performance packet pro
 
 ------
 
-## Quick Start
-
-### Using jnetpcap-sdk (Recommended)
-
-```xml
-<dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>com.slytechs.sdk</groupId>
-            <artifactId>sdk-bom</artifactId>
-            <version>3.0.0</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-</dependencyManagement>
-
-<dependencies>
-    <!-- Pulls all dependencies including sdk-protocol-tcpip -->
-    <dependency>
-        <groupId>com.slytechs.sdk</groupId>
-        <artifactId>jnetpcap-sdk</artifactId>
-    </dependency>
-</dependencies>
-```
-
-### Standalone Protocol Pack
-
-```xml
-<dependency>
-    <groupId>com.slytechs.sdk</groupId>
-    <artifactId>sdk-protocol-tcpip</artifactId>
-</dependency>
-```
-
-### Module Declaration
-
-```java
-module your.module {
-    requires com.slytechs.jnet.protocol.tcpip;
-}
-```
-
-------
-
 ## Examples
 
-### Basic Packet Processing
-
-```java
-void main() throws PcapException {
-    // Pre-allocate headers ONCE outside hot path
-    Ethernet ethernet = new Ethernet();
-    Ip4 ip4 = new Ip4();
-    Ip6 ip6 = new Ip6();
-    Tcp tcp = new Tcp();
-    Udp udp = new Udp();
-    
-    try (var pcap = NetPcap.openOffline("capture.pcap")) {
-        
-        pcap.dispatch(Pcap.LOOP_INFINITE, packet -> {
-            
-            // hasHeader() checks presence AND binds header
-            if (packet.hasHeader(ethernet)) {
-                System.out.printf("Ethernet: %s -> %s [%s]%n",
-                    ethernet.src(), ethernet.dst(), 
-                    EtherTypes.resolve(ethernet.type()));
-            }
-            
-            if (packet.hasHeader(ip4)) {
-                System.out.printf("IPv4: %s -> %s (TTL=%d, Proto=%s)%n",
-                    ip4.src(), ip4.dst(), ip4.ttl(),
-                    IpProtocolResolver.resolve(ip4.protocol()));
-            }
-            
-            if (packet.hasHeader(ip6)) {
-                System.out.printf("IPv6: %s -> %s (Hop=%d)%n",
-                    ip6.src(), ip6.dst(), ip6.hopLimit());
-            }
-            
-            if (packet.hasHeader(tcp)) {
-                System.out.printf("TCP: %d -> %d [%s] Seq=%d%n",
-                    tcp.srcPort(), tcp.dstPort(), 
-                    tcp.flags(), tcp.seq());
-            }
-            
-            if (packet.hasHeader(udp)) {
-                System.out.printf("UDP: %d -> %d Len=%d%n",
-                    udp.srcPort(), udp.dstPort(), udp.length());
-            }
-        });
-    }
-}
-```
-
-### VLAN Processing
+### Ethernet and VLAN
 
 ```java
 Ethernet ethernet = new Ethernet();
@@ -178,9 +112,13 @@ Vlan vlan = new Vlan();
 pcap.dispatch(count, packet -> {
     
     if (packet.hasHeader(ethernet)) {
+        System.out.printf("Ethernet: %s -> %s [%s]%n",
+            ethernet.src(), ethernet.dst(), 
+            EtherTypes.resolve(ethernet.type()));
+        
         // Check for VLAN tag
         if (packet.hasHeader(vlan)) {
-            System.out.printf("VLAN ID: %d, Priority: %d%n",
+            System.out.printf("  VLAN ID: %d, Priority: %d%n",
                 vlan.vid(), vlan.priority());
         }
     }
@@ -195,10 +133,34 @@ Vlan innerVlan = new Vlan();
 
 pcap.dispatch(count, packet -> {
     
-    // Check for Q-in-Q (double VLAN tagging)
+    // Depth 0 = outer, Depth 1 = inner
     if (packet.hasHeader(outerVlan, 0) && packet.hasHeader(innerVlan, 1)) {
         System.out.printf("Q-in-Q: Outer=%d, Inner=%d%n",
             outerVlan.vid(), innerVlan.vid());
+    }
+});
+```
+
+### IPv4 with Flags
+
+```java
+Ip4 ip4 = new Ip4();
+
+pcap.dispatch(count, packet -> {
+    
+    if (packet.hasHeader(ip4)) {
+        System.out.printf("IPv4: %s -> %s (TTL=%d, Proto=%s)%n",
+            ip4.src(), ip4.dst(), ip4.ttl(),
+            IpProtocolResolver.resolve(ip4.protocol()));
+        
+        // Fragmentation info
+        Ip4Flags flags = ip4.flags();
+        if (flags.moreFragments() || ip4.fragmentOffset() > 0) {
+            System.out.printf("  Fragment: DF=%b, MF=%b, Offset=%d%n",
+                flags.dontFragment(), 
+                flags.moreFragments(),
+                ip4.fragmentOffset());
+        }
     }
 });
 ```
@@ -212,54 +174,28 @@ TcpOptions options = new TcpOptions();
 pcap.dispatch(count, packet -> {
     
     if (packet.hasHeader(tcp)) {
-        // Access TCP options
+        System.out.printf("TCP: %d -> %d [%s] Seq=%d%n",
+            tcp.srcPort(), tcp.dstPort(), 
+            tcp.flags(), tcp.seq());
+        
         if (tcp.hasOptions()) {
             options.bind(tcp);
             
-            if (options.hasMss()) {
-                System.out.println("MSS: " + options.mss());
-            }
-            if (options.hasWindowScale()) {
-                System.out.println("Window Scale: " + options.windowScale());
-            }
-            if (options.hasTimestamps()) {
-                System.out.printf("Timestamps: TSval=%d, TSecr=%d%n",
+            if (options.hasMss())
+                System.out.println("  MSS: " + options.mss());
+            if (options.hasWindowScale())
+                System.out.println("  WScale: " + options.windowScale());
+            if (options.hasTimestamps())
+                System.out.printf("  TS: val=%d, ecr=%d%n",
                     options.tsVal(), options.tsEcr());
-            }
-            if (options.hasSackPermitted()) {
-                System.out.println("SACK Permitted");
-            }
+            if (options.hasSackPermitted())
+                System.out.println("  SACK Permitted");
         }
     }
 });
 ```
 
-### IPv4 Flags and Options
-
-```java
-Ip4 ip4 = new Ip4();
-Ip4Options options = new Ip4Options();
-
-pcap.dispatch(count, packet -> {
-    
-    if (packet.hasHeader(ip4)) {
-        // Check fragmentation flags
-        Ip4Flags flags = ip4.flags();
-        System.out.printf("DF=%b, MF=%b, Offset=%d%n",
-            flags.dontFragment(), 
-            flags.moreFragments(),
-            ip4.fragmentOffset());
-        
-        // Check for IP options
-        if (ip4.hasOptions()) {
-            options.bind(ip4);
-            // Process options...
-        }
-    }
-});
-```
-
-### IPsec Processing
+### IPsec
 
 ```java
 Ip4 ip4 = new Ip4();
@@ -283,14 +219,13 @@ pcap.dispatch(count, packet -> {
 });
 ```
 
-### MPLS Processing
+### MPLS Label Stack
 
 ```java
 Mpls mpls = new Mpls();
 
 pcap.dispatch(count, packet -> {
     
-    // Process MPLS label stack
     int depth = 0;
     while (packet.hasHeader(mpls, depth)) {
         System.out.printf("MPLS[%d]: Label=%d, TC=%d, S=%d, TTL=%d%n",
@@ -305,24 +240,7 @@ pcap.dispatch(count, packet -> {
 
 ## Protocol Details
 
-### Ethernet
-
-```java
-Ethernet eth = new Ethernet();
-
-// MAC addresses
-MacAddress src = eth.src();
-MacAddress dst = eth.dst();
-
-// EtherType
-int type = eth.type();
-String typeName = EtherTypes.resolve(type);
-
-// Vendor lookup
-String vendor = OuiResolver.resolve(src);
-```
-
-### IPv4
+### IPv4 Fields
 
 ```java
 Ip4 ip4 = new Ip4();
@@ -333,18 +251,13 @@ Ip4Address dst = ip4.dst();
 
 // Header fields
 int version = ip4.version();
-int ihl = ip4.ihl();           // Header length in 32-bit words
-int headerLen = ip4.headerLength();  // In bytes
+int ihl = ip4.ihl();              // In 32-bit words
+int headerLen = ip4.headerLength(); // In bytes
 int totalLen = ip4.totalLength();
 int id = ip4.identification();
 int ttl = ip4.ttl();
 int protocol = ip4.protocol();
 int checksum = ip4.checksum();
-
-// Fragmentation
-int offset = ip4.fragmentOffset();
-boolean df = ip4.flags().dontFragment();
-boolean mf = ip4.flags().moreFragments();
 
 // Type of Service
 Ip4TosFlags tos = ip4.tos();
@@ -352,31 +265,7 @@ int dscp = tos.dscp();
 int ecn = tos.ecn();
 ```
 
-### IPv6
-
-```java
-Ip6 ip6 = new Ip6();
-
-// Addresses  
-Ip6Address src = ip6.src();
-Ip6Address dst = ip6.dst();
-
-// Header fields
-int version = ip6.version();
-int trafficClass = ip6.trafficClass();
-int flowLabel = ip6.flowLabel();
-int payloadLength = ip6.payloadLength();
-int nextHeader = ip6.nextHeader();
-int hopLimit = ip6.hopLimit();
-
-// Extension headers
-if (ip6.hasExtensions()) {
-    Ip6Extensions ext = ip6.extensions();
-    // Process extension chain...
-}
-```
-
-### TCP
+### TCP Fields
 
 ```java
 Tcp tcp = new Tcp();
@@ -392,38 +281,22 @@ long ack = tcp.ack();
 // Flags
 TcpFlags flags = tcp.flags();
 boolean syn = flags.syn();
-boolean ack = flags.ack();
+boolean ackFlag = flags.ack();
 boolean fin = flags.fin();
 boolean rst = flags.rst();
-boolean psh = flags.psh();
-boolean urg = flags.urg();
 
-// Window and checksum
+// Window
 int window = tcp.window();
-int checksum = tcp.checksum();
-int urgentPointer = tcp.urgentPointer();
-
-// Data offset (header length)
 int dataOffset = tcp.dataOffset();  // In 32-bit words
-int headerLen = tcp.headerLength(); // In bytes
-```
-
-### UDP
-
-```java
-Udp udp = new Udp();
-
-int srcPort = udp.srcPort();
-int dstPort = udp.dstPort();
-int length = udp.length();
-int checksum = udp.checksum();
 ```
 
 ------
 
-## Installation
+## Advanced Installation
 
-### With SDK BOM (Recommended)
+### Standalone (With BOM)
+
+For projects that don't use the starter:
 
 ```xml
 <dependencyManagement>
@@ -450,8 +323,15 @@ int checksum = udp.checksum();
 
 ```groovy
 dependencies {
-    implementation platform('com.slytechs.sdk:sdk-bom:3.0.0')
-    implementation 'com.slytechs.sdk:sdk-protocol-tcpip'
+    implementation 'com.slytechs.sdk:jnetpcap-sdk:3.0.0'
+}
+```
+
+### Module Declaration
+
+```java
+module your.app {
+    requires com.slytechs.sdk.protocol.tcpip;
 }
 ```
 
@@ -461,7 +341,6 @@ dependencies {
 
 - [GitHub Wiki](https://github.com/slytechs-repos/sdk-protocol-tcpip/wiki) - User guides
 - [Javadocs](https://slytechs-repos.github.io/sdk-protocol-tcpip/) - API documentation
-- [SDK BOM](https://github.com/slytechs-repos/sdk-bom) - Version management
 
 ------
 
@@ -469,19 +348,10 @@ dependencies {
 
 | Module                                                       | Description                               |
 | ------------------------------------------------------------ | ----------------------------------------- |
+| [jnetpcap-sdk](https://github.com/slytechs-repos/jnetpcap-sdk) | Starter - pulls all dependencies          |
 | [sdk-protocol-core](https://github.com/slytechs-repos/sdk-protocol-core) | Protocol dissection framework             |
 | [sdk-protocol-web](https://github.com/slytechs-repos/sdk-protocol-web) | Web protocols (HTTP, TLS, DNS)            |
 | [sdk-protocol-infra](https://github.com/slytechs-repos/sdk-protocol-infra) | Infrastructure protocols (BGP, OSPF, STP) |
-| [jnetpcap-api](https://github.com/slytechs-repos/jnetpcap-api) | Packet capture API                        |
-| [jnetpcap-sdk](https://github.com/slytechs-repos/jnetpcap-sdk) | Complete SDK starter                      |
-
-------
-
-## Requirements
-
-- **Java 22+** - Required for Panama FFM
-- **sdk-protocol-core** - Dissection framework (transitive)
-- **sdk-common** - Core utilities (transitive)
 
 ------
 
