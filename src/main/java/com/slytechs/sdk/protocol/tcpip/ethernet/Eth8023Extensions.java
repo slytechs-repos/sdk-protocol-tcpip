@@ -25,7 +25,8 @@ import java.util.NoSuchElementException;
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.detail.render.TextRenderer;
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.BoundView;
+import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.protocol.core.HeaderExtension;
 import com.slytechs.sdk.protocol.core.HeaderExtensions;
 import com.slytechs.sdk.protocol.core.ProtocolId;
@@ -42,7 +43,7 @@ import com.slytechs.sdk.protocol.core.ProtocolId;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-public final class Eth8023Extensions extends ByteBuf
+public final class Eth8023Extensions extends BoundView
 		implements HeaderExtensions<Eth8023Extensions.Eth8023Extension>, Detailable,
 		Iterable<Eth8023Extensions.Eth8023Extension> {
 
@@ -78,6 +79,7 @@ public final class Eth8023Extensions extends ByteBuf
 
 	private long bitmask;
 
+	private final MemoryBuffer buffer = new MemoryBuffer();
 	private final int[] chain = new int[MAX_EXTENSIONS];
 	private int chainLength;
 	private boolean parsed;
@@ -127,43 +129,43 @@ public final class Eth8023Extensions extends ByteBuf
 
 	public final class Llc extends Eth8023Extension {
 		public static final int HEADER_ID = ProtocolId.LLC;
-		
+
 		private Llc() {
 			super(LLC);
 		}
 
 		public int dsap() {
-			return isPresent() ? get(offset) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset) & 0xFF : -1;
 		}
 
 		public int ssap() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		public boolean dsapIndividual() {
-			return isPresent() && (get(offset) & 0x01) == 0;
+			return isPresent() && (buffer.get(offset) & 0x01) == 0;
 		}
 
 		public boolean dsapGroup() {
-			return isPresent() && (get(offset) & 0x01) != 0;
+			return isPresent() && (buffer.get(offset) & 0x01) != 0;
 		}
 
 		public boolean ssapCommand() {
-			return isPresent() && (get(offset + 1) & 0x01) == 0;
+			return isPresent() && (buffer.get(offset + 1) & 0x01) == 0;
 		}
 
 		public boolean ssapResponse() {
-			return isPresent() && (get(offset + 1) & 0x01) != 0;
+			return isPresent() && (buffer.get(offset + 1) & 0x01) != 0;
 		}
 
 		public int control() {
-			return isPresent() ? get(offset + 2) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 2) & 0xFF : -1;
 		}
 
 		public int controlExtended() {
 			if (!isPresent() || length < 4)
 				return -1;
-			return getShort(offset + 2) & 0xFFFF;
+			return buffer.getShort(offset + 2) & 0xFFFF;
 		}
 
 		public boolean isUnnumbered() {
@@ -213,6 +215,7 @@ public final class Eth8023Extensions extends ByteBuf
 
 	public final class Snap extends Eth8023Extension {
 		public static final int HEADER_ID = ProtocolId.SNAP;
+
 		private Snap() {
 			super(SNAP);
 		}
@@ -220,13 +223,13 @@ public final class Eth8023Extensions extends ByteBuf
 		public int oui() {
 			if (!isPresent())
 				return -1;
-			return ((get(offset) & 0xFF) << 16) |
-					((get(offset + 1) & 0xFF) << 8) |
-					(get(offset + 2) & 0xFF);
+			return ((buffer.get(offset) & 0xFF) << 16) |
+					((buffer.get(offset + 1) & 0xFF) << 8) |
+					(buffer.get(offset + 2) & 0xFF);
 		}
 
 		public int protocolId() {
-			return isPresent() ? getShort(offset + 3) & 0xFFFF : -1;
+			return isPresent() ? buffer.getShort(offset + 3) & 0xFFFF : -1;
 		}
 
 		public boolean isRfc1042() {
@@ -281,8 +284,14 @@ public final class Eth8023Extensions extends ByteBuf
 	}
 
 	@Override
+	public void onBind() {
+		buffer.bind(this);
+	}
+
+	@Override
 	public void onUnbind() {
 		parsed = false;
+		buffer.unbind();
 	}
 
 	private void setPresent(int id) {
@@ -368,15 +377,15 @@ public final class Eth8023Extensions extends ByteBuf
 		bitmask = 0;
 		chainLength = 0;
 
-		long end = limit();
+		long end = buffer.limit();
 		if (end < LLC_HEADER_LENGTH) {
 			parsed = true;
 			return;
 		}
 
-		int dsap = get(0) & 0xFF;
-		int ssap = get(1) & 0xFF;
-		int control = get(2) & 0xFF;
+		int dsap = buffer.get(0) & 0xFF;
+		int ssap = buffer.get(1) & 0xFF;
+		int control = buffer.get(2) & 0xFF;
 
 		int llcLen = isExtendedControl(control) && end >= LLC_HEADER_LENGTH_EXTENDED
 				? LLC_HEADER_LENGTH_EXTENDED

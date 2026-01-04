@@ -32,8 +32,6 @@ module com.slytechs.sdk.protocol.tcpip {
 
 	provides com.slytechs.sdk.protocol.core.pack.ProtocolPackPlugin
 			with com.slytechs.sdk.protocol.tcpip.impl.TcpipPlugin;
-	provides com.slytechs.sdk.protocol.core.table.TableProvider
-			with com.slytechs.sdk.protocol.tcpip.table.TcpIpTableProvider;
 	
 	provides com.slytechs.sdk.protocol.core.spi.ProtocolProvider
 			with com.slytechs.sdk.protocol.tcpip.impl.TcpipProtocolProvider;

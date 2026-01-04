@@ -25,7 +25,8 @@ import java.util.NoSuchElementException;
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.detail.render.TextRenderer;
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.BoundView;
+import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.protocol.core.HeaderExtension;
 import com.slytechs.sdk.protocol.core.HeaderExtensions;
 import com.slytechs.sdk.protocol.core.ProtocolId;
@@ -38,7 +39,8 @@ import com.slytechs.sdk.protocol.core.ProtocolId;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6Extensions.Ip6Extension>, Detailable,
+public final class Ip6Extensions extends BoundView
+		implements HeaderExtensions<Ip6Extensions.Ip6Extension>, Detailable,
 		Iterable<Ip6Extensions.Ip6Extension> {
 
 	public static final int HOP_BY_HOP = 0;
@@ -98,6 +100,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 	private int finalProtocol;
 	private boolean parsed;
 
+	private final MemoryBuffer buffer = new MemoryBuffer();
 	private Ip6 parent;
 
 	public class Ip6Extension implements HeaderExtension {
@@ -138,7 +141,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int nextHeader() {
-			return isPresent() ? get(offset) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset) & 0xFF : -1;
 		}
 
 		@Override
@@ -150,7 +153,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		public void buildDetail(DetailBuilder.HeaderBuilder h) {
 			int hdrOff = IP6_HEADER_LENGTH + offset;
 			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Length", get(offset + 1) & 0xFF, byteAt(hdrOff + 1));
+			h.field("Length", buffer.get(offset + 1) & 0xFF, byteAt(hdrOff + 1));
 			if (length > 2) {
 				h.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
 			}
@@ -158,13 +161,14 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 	}
 
 	public final class HopByHop extends Ip6Extension {
-    	public static final int HEADER_ID = ProtocolId.IPv6_HOPOPT;
+		public static final int HEADER_ID = ProtocolId.IPv6_HOPOPT;
+
 		private HopByHop() {
 			super(HOP_BY_HOP);
 		}
 
 		public int headerLength() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		public int headerLengthBytes() {
@@ -189,7 +193,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int headerLength() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		public int headerLengthBytes() {
@@ -198,11 +202,11 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int routingType() {
-			return isPresent() ? get(offset + 2) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 2) & 0xFF : -1;
 		}
 
 		public int segmentsLeft() {
-			return isPresent() ? get(offset + 3) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 3) & 0xFF : -1;
 		}
 
 		public int addressCount() {
@@ -214,7 +218,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 				return null;
 			byte[] addr = new byte[16];
 			for (int i = 0; i < 16; i++) {
-				addr[i] = get(offset + 8 + index * 16 + i);
+				addr[i] = buffer.get(offset + 8 + index * 16 + i);
 			}
 			return addr;
 		}
@@ -226,7 +230,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 			h.field("Length", headerLength(), headerLengthBytes() + " bytes", byteAt(hdrOff + 1));
 			h.field("Routing Type", routingType(), routingTypeName(routingType()), byteAt(hdrOff + 2));
 			h.field("Segments Left", segmentsLeft(), byteAt(hdrOff + 3));
-			h.field("Reserved", getInt(offset + 4), intAt(hdrOff + 4));
+			h.field("Reserved", buffer.getInt(offset + 4), intAt(hdrOff + 4));
 
 			for (int i = 0; i < addressCount(); i++) {
 				int idx = i;
@@ -243,13 +247,13 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int reserved() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		public int fragmentOffset() {
 			if (!isPresent())
 				return -1;
-			int value = getShort(offset + 2) & 0xFFFF;
+			int value = buffer.getShort(offset + 2) & 0xFFFF;
 			return (value >> 3) & 0x1FFF;
 		}
 
@@ -259,15 +263,15 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int flags() {
-			return isPresent() ? get(offset + 3) & 0x07 : -1;
+			return isPresent() ? buffer.get(offset + 3) & 0x07 : -1;
 		}
 
 		public boolean moreFragments() {
-			return isPresent() && (get(offset + 3) & 0x01) != 0;
+			return isPresent() && (buffer.get(offset + 3) & 0x01) != 0;
 		}
 
 		public int identification() {
-			return isPresent() ? getInt(offset + 4) : -1;
+			return isPresent() ? buffer.getInt(offset + 4) : -1;
 		}
 
 		public boolean isFirst() {
@@ -287,12 +291,12 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 			int hdrOff = IP6_HEADER_LENGTH + offset;
 			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
 			h.field("Reserved", reserved(), byteAt(hdrOff + 1));
-			h.expandField("Offset/Flags", getShort(offset + 2) & 0xFFFF,
+			h.expandField("Offset/Flags", buffer.getShort(offset + 2) & 0xFFFF,
 					String.format("Offset=%d, M=%d", fragmentOffset(), moreFragments() ? 1 : 0),
 					shortAt(hdrOff + 2), f -> {
 						f.field("Fragment Offset", fragmentOffset(), fragmentOffsetBytes() + " bytes", bitsAt((hdrOff
 								+ 2) * 8L, 13));
-						f.field("Reserved", (getShort(offset + 2) >> 1) & 0x03, bitsAt((hdrOff + 2) * 8L + 13, 2));
+						f.field("Reserved", (buffer.getShort(offset + 2) >> 1) & 0x03, bitsAt((hdrOff + 2) * 8L + 13, 2));
 						f.field("More Fragments", moreFragments() ? 1 : 0, moreFragments() ? "Yes" : "No", bitsAt(
 								(hdrOff + 2) * 8L + 15, 1));
 					});
@@ -308,7 +312,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int headerLength() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		public int headerLengthBytes() {
@@ -335,7 +339,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int payloadLength() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		public int headerLengthBytes() {
@@ -344,15 +348,15 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int reserved() {
-			return isPresent() ? getShort(offset + 2) & 0xFFFF : -1;
+			return isPresent() ? buffer.getShort(offset + 2) & 0xFFFF : -1;
 		}
 
 		public int spi() {
-			return isPresent() ? getInt(offset + 4) : -1;
+			return isPresent() ? buffer.getInt(offset + 4) : -1;
 		}
 
 		public int sequenceNumber() {
-			return isPresent() ? getInt(offset + 8) : -1;
+			return isPresent() ? buffer.getInt(offset + 8) : -1;
 		}
 
 		public int icvLength() {
@@ -388,11 +392,11 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int spi() {
-			return isPresent() ? getInt(offset) : -1;
+			return isPresent() ? buffer.getInt(offset) : -1;
 		}
 
 		public int sequenceNumber() {
-			return isPresent() ? getInt(offset + 4) : -1;
+			return isPresent() ? buffer.getInt(offset + 4) : -1;
 		}
 
 		@Override
@@ -414,19 +418,19 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int headerLength() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		public int mhType() {
-			return isPresent() ? get(offset + 2) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 2) & 0xFF : -1;
 		}
 
 		public int reserved() {
-			return isPresent() ? get(offset + 3) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 3) & 0xFF : -1;
 		}
 
 		public int checksum() {
-			return isPresent() ? getShort(offset + 4) & 0xFFFF : -1;
+			return isPresent() ? buffer.getShort(offset + 4) & 0xFFFF : -1;
 		}
 
 		@Override
@@ -451,7 +455,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int headerLength() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		@Override
@@ -473,7 +477,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int headerLength() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		@Override
@@ -493,7 +497,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		}
 
 		public int headerLength() {
-			return isPresent() ? get(offset + 1) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
 
 		@Override
@@ -534,6 +538,11 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 	@Override
 	public void onUnbind() {
 		parsed = false;
+		buffer.unbind();
+	}
+
+	public void onBound() {
+		buffer.bind(this);
 	}
 
 	private void setPresent(int id) {
@@ -717,7 +726,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 		chainLength = 0;
 		finalProtocol = -1;
 
-		long end = limit();
+		long end = buffer.limit();
 		if (end <= 0) {
 			finalProtocol = parent != null ? parent.nextHeader() : -1;
 			parsed = true;
@@ -750,16 +759,16 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 			if (pos + 2 > end && extId != FRAGMENT)
 				break;
 
-			nextHeader = get(pos) & 0xFF;
+			nextHeader = buffer.get(pos) & 0xFF;
 
 			long extLen;
 			if (extId == FRAGMENT) {
 				extLen = FRAGMENT_LENGTH;
 			} else if (extId == AH) {
-				int lenField = get(pos + 1) & 0xFF;
+				int lenField = buffer.get(pos + 1) & 0xFF;
 				extLen = (lenField + 2) * 4;
 			} else {
-				int lenField = get(pos + 1) & 0xFF;
+				int lenField = buffer.get(pos + 1) & 0xFF;
 				extLen = (lenField + 1) * 8;
 			}
 
@@ -785,7 +794,7 @@ public final class Ip6Extensions extends ByteBuf implements HeaderExtensions<Ip6
 				int lastId = chain[chainLength - 1];
 				Ip6Extension lastExt = registry[lastId];
 				if (lastExt != null) {
-					finalProtocol = get(lastExt.offset) & 0xFF;
+					finalProtocol = buffer.get(lastExt.offset) & 0xFF;
 				}
 			} else if (parent != null) {
 				finalProtocol = parent.nextHeader();

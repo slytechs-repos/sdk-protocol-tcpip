@@ -545,7 +545,7 @@ public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip, Detailab
 	 */
 	@Override
 	public long extensionsLength() {
-		return super.limit() - extensionsOffset();
+		return super.end() - extensionsOffset();
 	}
 
 	/**

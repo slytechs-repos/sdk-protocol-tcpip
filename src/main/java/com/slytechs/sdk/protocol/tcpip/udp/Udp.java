@@ -152,7 +152,8 @@ public class Udp extends FixedHeader implements Detailable {
 	 *
 	 * @return the total UDP datagram length in bytes
 	 */
-	public int length() {
+	@Override
+	public long length() {
 		return LENGTH.getShort(view()) & 0xFFFF;
 	}
 
@@ -174,7 +175,7 @@ public class Udp extends FixedHeader implements Detailable {
 	 *
 	 * @return the payload length in bytes
 	 */
-	public int payloadLength() {
+	public long payloadLength() {
 		return length() - HEADER_LENGTH;
 	}
 

@@ -23,10 +23,11 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.detail.DetailBuilder.HeaderBuilder;
+import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.detail.render.TextRenderer;
-import com.slytechs.sdk.common.memory.ByteBuf;
+import com.slytechs.sdk.common.memory.BoundView;
+import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.protocol.core.HeaderOption;
 import com.slytechs.sdk.protocol.core.HeaderOptions;
 import com.slytechs.sdk.protocol.core.ProtocolId;
@@ -38,7 +39,8 @@ import com.slytechs.sdk.protocol.core.ProtocolId;
  * @author Sly Technologies Inc.
  * @since 1.0
  */
-public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOptions.TcpOption>, Detailable,
+public final class TcpOptions extends BoundView
+		implements HeaderOptions<TcpOptions.TcpOption>, Detailable,
 		Iterable<TcpOptions.TcpOption> {
 
 	public static final int EOL = 0;
@@ -167,7 +169,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 
 		@Override
 		public String optionAbbr() {
-		    return TcpOptions.optionAbbr(id);
+			return TcpOptions.optionAbbr(id);
 		}
 
 		void bind(int offset, int length) {
@@ -177,12 +179,12 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 
 		// Base TcpOption
 		public void buildDetail(DetailBuilder.FieldContainer f) {
-		    int hdrOff = TCP_HEADER_MIN + offset;
-		    f.field("Kind", id, byteAt(hdrOff));
-		    f.field("Length", length, byteAt(hdrOff + 1));
-		    if (length > 2) {
-		        f.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-		    }
+			int hdrOff = TCP_HEADER_MIN + offset;
+			f.field("Kind", id, byteAt(hdrOff));
+			f.field("Length", length, byteAt(hdrOff + 1));
+			if (length > 2) {
+				f.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
+			}
 		}
 
 		/**
@@ -196,32 +198,34 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 
 	public final class Mss extends TcpOption {
 		public static final int HEADER_ID = ProtocolId.TCP_OPT_MSS;
+
 		private Mss() {
 			super(MSS);
 		}
 
 		public int mss() {
-			return isPresent() ? getShortBE(offset + 2) & 0xFFFF : DEFAULT_MSS;
+			return isPresent() ? buffer.getShortBE(offset + 2) & 0xFFFF : DEFAULT_MSS;
 		}
 
 		@Override
 		public void buildDetail(DetailBuilder.FieldContainer f) {
-		    int hdrOff = TCP_HEADER_MIN + offset;
-		    f.field("Kind", id, byteAt(hdrOff));
-		    f.field("Length", length, byteAt(hdrOff + 1));
-		    f.field("MSS", mss(), mss() + " bytes", shortAt(hdrOff + 2));
+			int hdrOff = TCP_HEADER_MIN + offset;
+			f.field("Kind", id, byteAt(hdrOff));
+			f.field("Length", length, byteAt(hdrOff + 1));
+			f.field("MSS", mss(), mss() + " bytes", shortAt(hdrOff + 2));
 		}
 
 	}
 
 	public final class WindowScale extends TcpOption {
 		public static final int HEADER_ID = ProtocolId.TCP_OPT_WSCALE;
+
 		private WindowScale() {
 			super(WINDOW_SCALE);
 		}
 
 		public int shiftCount() {
-			return isPresent() ? get(offset + 2) & 0x0F : 0;
+			return isPresent() ? buffer.get(offset + 2) & 0x0F : 0;
 		}
 
 		public int multiplier() {
@@ -230,15 +234,17 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 
 		@Override
 		public void buildDetail(DetailBuilder.FieldContainer f) {
-		    int hdrOff = TCP_HEADER_MIN + offset;
-		    f.field("Kind", id, byteAt(hdrOff));
-		    f.field("Length", length, byteAt(hdrOff + 1));
-		    f.field("Shift Count", shiftCount(), shiftCount() + " (multiply by " + multiplier() + ")", byteAt(hdrOff + 2));
+			int hdrOff = TCP_HEADER_MIN + offset;
+			f.field("Kind", id, byteAt(hdrOff));
+			f.field("Length", length, byteAt(hdrOff + 1));
+			f.field("Shift Count", shiftCount(), shiftCount() + " (multiply by " + multiplier() + ")", byteAt(hdrOff
+					+ 2));
 		}
 	}
 
 	public final class SackPermitted extends TcpOption {
 		public static final int HEADER_ID = ProtocolId.TCP_OPT_SACK_PERM;
+
 		private SackPermitted() {
 			super(SACK_PERMITTED);
 		}
@@ -253,6 +259,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 
 	public final class Sack extends TcpOption {
 		public static final int HEADER_ID = ProtocolId.TCP_OPT_SACK;
+
 		private Sack() {
 			super(SACK);
 		}
@@ -264,29 +271,29 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 		public long leftEdge(int index) {
 			if (!isPresent() || index < 0 || index >= blockCount())
 				return -1;
-			return getIntBE(offset + 2 + index * 8) & 0xFFFFFFFFL;
+			return buffer.getIntBE(offset + 2 + index * 8) & 0xFFFFFFFFL;
 		}
 
 		public long rightEdge(int index) {
 			if (!isPresent() || index < 0 || index >= blockCount())
 				return -1;
-			return getIntBE(offset + 6 + index * 8) & 0xFFFFFFFFL;
+			return buffer.getIntBE(offset + 6 + index * 8) & 0xFFFFFFFFL;
 		}
 
 		@Override
 		public void buildDetail(DetailBuilder.FieldContainer f) {
-		    int hdrOff = TCP_HEADER_MIN + offset;
-		    f.field("Kind", id, byteAt(hdrOff));
-		    f.field("Length", length, byteAt(hdrOff + 1));
-		    int blocks = blockCount();
-		    for (int j = 0; j < blocks; j++) {
-		        int blockOff = hdrOff + 2 + j * 8;
-		        int idx = j;
-		        f.section("Block " + j, "", s -> {
-		            s.field("Left Edge", leftEdge(idx), intAt(blockOff));
-		            s.field("Right Edge", rightEdge(idx), intAt(blockOff + 4));
-		        });
-		    }
+			int hdrOff = TCP_HEADER_MIN + offset;
+			f.field("Kind", id, byteAt(hdrOff));
+			f.field("Length", length, byteAt(hdrOff + 1));
+			int blocks = blockCount();
+			for (int j = 0; j < blocks; j++) {
+				int blockOff = hdrOff + 2 + j * 8;
+				int idx = j;
+				f.section("Block " + j, "", s -> {
+					s.field("Left Edge", leftEdge(idx), intAt(blockOff));
+					s.field("Right Edge", rightEdge(idx), intAt(blockOff + 4));
+				});
+			}
 		}
 	}
 
@@ -298,20 +305,20 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 		}
 
 		public long tsVal() {
-			return isPresent() ? getIntBE(offset + 2) & 0xFFFFFFFFL : -1;
+			return isPresent() ? buffer.getIntBE(offset + 2) & 0xFFFFFFFFL : -1;
 		}
 
 		public long tsEcr() {
-			return isPresent() ? getIntBE(offset + 6) & 0xFFFFFFFFL : -1;
+			return isPresent() ? buffer.getIntBE(offset + 6) & 0xFFFFFFFFL : -1;
 		}
 
 		@Override
 		public void buildDetail(DetailBuilder.FieldContainer f) {
-		    int hdrOff = TCP_HEADER_MIN + offset;
-		    f.field("Kind", id, byteAt(hdrOff));
-		    f.field("Length", length, byteAt(hdrOff + 1));
-		    f.field("TSval", tsVal(), intAt(hdrOff + 2));
-		    f.field("TSecr", tsEcr(), intAt(hdrOff + 6));
+			int hdrOff = TCP_HEADER_MIN + offset;
+			f.field("Kind", id, byteAt(hdrOff));
+			f.field("Length", length, byteAt(hdrOff + 1));
+			f.field("TSval", tsVal(), intAt(hdrOff + 2));
+			f.field("TSecr", tsEcr(), intAt(hdrOff + 6));
 		}
 	}
 
@@ -340,17 +347,17 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 	}
 
 	public final class Authentication extends TcpOption {
-		
+
 		private Authentication() {
 			super(TCP_AO);
 		}
 
 		public int keyId() {
-			return isPresent() ? get(offset + 2) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 2) & 0xFF : -1;
 		}
 
 		public int nextKeyId() {
-			return isPresent() ? get(offset + 3) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 3) & 0xFF : -1;
 		}
 
 		public int macLength() {
@@ -382,19 +389,19 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 		}
 
 		public int function() {
-			return isPresent() ? (get(offset + 2) >> 4) & 0x0F : -1;
+			return isPresent() ? (buffer.get(offset + 2) >> 4) & 0x0F : -1;
 		}
 
 		public int rate() {
-			return isPresent() ? get(offset + 2) & 0x0F : -1;
+			return isPresent() ? buffer.get(offset + 2) & 0x0F : -1;
 		}
 
 		public int ttlDiff() {
-			return isPresent() ? get(offset + 3) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 3) & 0xFF : -1;
 		}
 
 		public int nonce() {
-			return isPresent() ? getInt(offset + 4) >>> 2 : -1;
+			return isPresent() ? buffer.getInt(offset + 4) >>> 2 : -1;
 		}
 
 		@Override
@@ -402,7 +409,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 			int hdrOff = TCP_HEADER_MIN + offset;
 			h.field("Kind", id, byteAt(hdrOff));
 			h.field("Length", length, byteAt(hdrOff + 1));
-			h.expandField("Func/Rate", get(offset + 2) & 0xFF,
+			h.expandField("Func/Rate", buffer.get(offset + 2) & 0xFF,
 					String.format("Func=%d, Rate=%d", function(), rate()),
 					byteAt(hdrOff + 2), f -> {
 						f.field("Function", function(), bitsAt((hdrOff + 2) * 8L, 4));
@@ -414,23 +421,23 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 	}
 
 	public final class UserTimeout extends TcpOption {
-		
+
 		private UserTimeout() {
 			super(USER_TIMEOUT);
 		}
 
 		public int granularity() {
-			return isPresent() ? (get(offset + 2) >> 7) & 0x01 : -1;
+			return isPresent() ? (buffer.get(offset + 2) >> 7) & 0x01 : -1;
 		}
 
 		public int value() {
-			return isPresent() ? getShort(offset + 2) & 0x7FFF : -1;
+			return isPresent() ? buffer.getShort(offset + 2) & 0x7FFF : -1;
 		}
 
 		public int timeoutSeconds() {
 			if (!isPresent())
 				return -1;
-			int raw = getShort(offset + 2) & 0xFFFF;
+			int raw = buffer.getShort(offset + 2) & 0xFFFF;
 			int gran = (raw >> 15) & 0x01;
 			int val = raw & 0x7FFF;
 			return gran == 1 ? val : val * 60;
@@ -442,7 +449,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 			h.field("Kind", id, byteAt(hdrOff));
 			h.field("Length", length, byteAt(hdrOff + 1));
 			String granStr = granularity() == 1 ? "seconds" : "minutes";
-			h.expandField("Timeout", getShort(offset + 2) & 0xFFFF,
+			h.expandField("Timeout", buffer.getShort(offset + 2) & 0xFFFF,
 					timeoutSeconds() + " seconds",
 					shortAt(hdrOff + 2), f -> {
 						f.field("Granularity", granularity(), granStr, bitsAt((hdrOff + 2) * 8L, 1));
@@ -491,29 +498,29 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 		}
 
 		public int subtype() {
-			return isPresent() ? (get(offset + 2) >> 4) & 0x0F : -1;
+			return isPresent() ? (buffer.get(offset + 2) >> 4) & 0x0F : -1;
 		}
 
 		public int version() {
 			if (!isPresent() || subtype() != MPTCP_MP_CAPABLE)
 				return -1;
-			return get(offset + 2) & 0x0F;
+			return buffer.get(offset + 2) & 0x0F;
 		}
 
 		public int flags() {
-			return isPresent() ? get(offset + 3) & 0xFF : -1;
+			return isPresent() ? buffer.get(offset + 3) & 0xFF : -1;
 		}
 
 		public long senderKey() {
 			if (!isPresent() || subtype() != MPTCP_MP_CAPABLE || length < 12)
 				return -1;
-			return getLong(offset + 4);
+			return buffer.getLong(offset + 4);
 		}
 
 		public long receiverKey() {
 			if (!isPresent() || subtype() != MPTCP_MP_CAPABLE || length < 20)
 				return -1;
-			return getLong(offset + 12);
+			return buffer.getLong(offset + 12);
 		}
 
 		@Override
@@ -521,7 +528,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 			int hdrOff = TCP_HEADER_MIN + offset;
 			h.field("Kind", id, byteAt(hdrOff));
 			h.field("Length", length, byteAt(hdrOff + 1));
-			h.expandField("Subtype/Version", get(offset + 2) & 0xFF,
+			h.expandField("Subtype/Version", buffer.get(offset + 2) & 0xFF,
 					mptcpSubtypeName(subtype()),
 					byteAt(hdrOff + 2), f -> {
 						f.field("Subtype", subtype(), bitsAt((hdrOff + 2) * 8L, 4));
@@ -540,7 +547,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 	}
 
 	public final class AccEcn extends TcpOption {
-		
+
 		private final int order;
 
 		private AccEcn(int id, int order) {
@@ -551,19 +558,19 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 		public int ee0() {
 			if (!isPresent() || length < 5)
 				return -1;
-			return ((get(offset + 2) & 0xFF) << 16) | (getShort(offset + 3) & 0xFFFF);
+			return ((buffer.get(offset + 2) & 0xFF) << 16) | (buffer.getShort(offset + 3) & 0xFFFF);
 		}
 
 		public int eceb() {
 			if (!isPresent() || length < 8)
 				return -1;
-			return ((get(offset + 5) & 0xFF) << 16) | (getShort(offset + 6) & 0xFFFF);
+			return ((buffer.get(offset + 5) & 0xFF) << 16) | (buffer.getShort(offset + 6) & 0xFFFF);
 		}
 
 		public int ce() {
 			if (!isPresent() || length < 11)
 				return -1;
-			return ((get(offset + 8) & 0xFF) << 16) | (getShort(offset + 9) & 0xFFFF);
+			return ((buffer.get(offset + 8) & 0xFF) << 16) | (buffer.getShort(offset + 9) & 0xFFFF);
 		}
 
 		@Override
@@ -581,7 +588,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 	}
 
 	public final class Encryption extends TcpOption {
-		
+
 		private Encryption() {
 			super(ENCRYPTION_NEGOTIATION);
 		}
@@ -607,7 +614,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 		}
 
 		public int exId() {
-			return isPresent() && length >= 4 ? getShort(offset + 2) & 0xFFFF : -1;
+			return isPresent() && length >= 4 ? buffer.getShort(offset + 2) & 0xFFFF : -1;
 		}
 
 		@Override
@@ -642,6 +649,8 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 	private final Encryption encryption = new Encryption();
 	private final Experiment experiment1 = new Experiment(EXPERIMENT_1);
 	private final Experiment experiment2 = new Experiment(EXPERIMENT_2);
+
+	private final MemoryBuffer buffer = new MemoryBuffer();
 
 	TcpOptions() {}
 
@@ -842,6 +851,12 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 	@Override
 	public void onUnbind() {
 		parsed = false;
+		buffer.unbind();
+	}
+
+	@Override
+	public void onBind() {
+		buffer.bind(this);
 	}
 
 	private void ensureParsed() {
@@ -856,10 +871,10 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 		chainLength = 0;
 
 		long pos = 0;
-		long end = limit();
+		long end = buffer.limit();
 
 		while (pos < end && chainLength < MAX_OPTIONS) {
-			int kind = get(pos) & 0xFF;
+			int kind = buffer.get(pos) & 0xFF;
 
 			if (kind == EOL)
 				break;
@@ -872,7 +887,7 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 			if (pos + 1 >= end)
 				break;
 
-			int len = get(pos + 1) & 0xFF;
+			int len = buffer.get(pos + 1) & 0xFF;
 			if (len < 2 || pos + len > end)
 				break;
 
@@ -916,23 +931,23 @@ public final class TcpOptions extends ByteBuf implements HeaderOptions<TcpOption
 		default -> "Unknown (" + kind + ")";
 		};
 	}
-	
+
 	// Static method in TcpOptions
 	public static String optionAbbr(int kind) {
-	    return switch (kind) {
-	        case MSS -> "MSS";
-	        case WINDOW_SCALE -> "WS";
-	        case SACK_PERMITTED -> "SACKP";
-	        case SACK -> "SACK";
-	        case TIMESTAMPS -> "TS";
-	        case FAST_OPEN -> "TFO";
-	        case MPTCP -> "MPTCP";
-	        case USER_TIMEOUT -> "UTO";
-	        case TCP_AO -> "AO";
-	        case MD5_SIGNATURE -> "MD5";
-	        case QUICK_START -> "QS";
-	        default -> String.valueOf(kind);
-	    };
+		return switch (kind) {
+		case MSS -> "MSS";
+		case WINDOW_SCALE -> "WS";
+		case SACK_PERMITTED -> "SACKP";
+		case SACK -> "SACK";
+		case TIMESTAMPS -> "TS";
+		case FAST_OPEN -> "TFO";
+		case MPTCP -> "MPTCP";
+		case USER_TIMEOUT -> "UTO";
+		case TCP_AO -> "AO";
+		case MD5_SIGNATURE -> "MD5";
+		case QUICK_START -> "QS";
+		default -> String.valueOf(kind);
+		};
 	}
 
 	public static String mptcpSubtypeName(int subtype) {

@@ -20,6 +20,8 @@ package com.slytechs.sdk.protocol.tcpip.ipsec;
 import static com.slytechs.sdk.common.detail.DetailBuilder.*;
 
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
@@ -312,9 +314,12 @@ public class IpsecAh extends FixedHeader implements Detailable {
 		if (len <= 0) {
 			return new byte[0];
 		}
+		
+		MemorySegment mseg = segment();
+		long start = start() + MIN_HEADER_LENGTH;
 		byte[] icv = new byte[len];
 		for (int i = 0; i < len; i++) {
-			icv[i] = get(MIN_HEADER_LENGTH + i);
+			icv[i] = mseg.get(ValueLayout.JAVA_BYTE, start + i);
 		}
 		return icv;
 	}
