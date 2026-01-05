@@ -25,6 +25,7 @@ module com.slytechs.sdk.protocol.tcpip {
 	exports com.slytechs.sdk.protocol.tcpip.ethernet;
 	exports com.slytechs.sdk.protocol.tcpip.ip;
 	exports com.slytechs.sdk.protocol.tcpip.tcp;
+	exports com.slytechs.sdk.protocol.tcpip.udp;
 
 	requires com.slytechs.sdk.common;
 	requires transitive com.slytechs.sdk.protocol.core;
