@@ -110,10 +110,10 @@ public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip, Detailab
 
 	/** IPv6 header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
-			U32_BE.withName("hdr_vtc_flow"),
-			U16_BE.withName("hdr_payload_len"),
-			U8_BE.withName("hdr_next_hdr"),
-			U8_BE.withName("hdr_hop_limit"),
+			U32_BE_A1.withName("hdr_vtc_flow"),
+			U16_BE_A1.withName("hdr_payload_len"),
+			U8_BE_A1.withName("hdr_next_hdr"),
+			U8_BE_A1.withName("hdr_hop_limit"),
 			Ip6AddressMemory.LAYOUT.withName("hdr_src_addr"),
 			Ip6AddressMemory.LAYOUT.withName("hdr_dst_addr"));
 
