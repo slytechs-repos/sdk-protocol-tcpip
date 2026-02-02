@@ -27,9 +27,9 @@ import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
-import com.slytechs.sdk.protocol.core.HeaderExtension;
-import com.slytechs.sdk.protocol.core.HeaderExtensions;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.HeaderExtension;
+import com.slytechs.sdk.protocol.core.header.HeaderExtensions;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * IPv6 extension headers container with zero-allocation inner extension
@@ -161,7 +161,7 @@ public final class Ip6Extensions extends BoundView
 	}
 
 	public final class HopByHop extends Ip6Extension {
-		public static final int HEADER_ID = ProtocolId.IPv6_HOPOPT;
+		public static final int HEADER_ID = ProtocolIds.IPv6_HOPOPT;
 
 		private HopByHop() {
 			super(HOP_BY_HOP);
@@ -240,7 +240,7 @@ public final class Ip6Extensions extends BoundView
 	}
 
 	public final class Fragment extends Ip6Extension {
-		public static final int HEADER_ID = ProtocolId.IPv6_FRAG;
+		public static final int HEADER_ID = ProtocolIds.IPv6_FRAG;
 
 		private Fragment() {
 			super(FRAGMENT);
@@ -305,7 +305,7 @@ public final class Ip6Extensions extends BoundView
 	}
 
 	public final class Destination extends Ip6Extension {
-		public static final int HEADER_ID = ProtocolId.IPv6_DSTOPT;
+		public static final int HEADER_ID = ProtocolIds.IPv6_DSTOPT;
 
 		private Destination() {
 			super(DESTINATION);
@@ -332,7 +332,7 @@ public final class Ip6Extensions extends BoundView
 	}
 
 	public final class Authentication extends Ip6Extension {
-		public static final int HEADER_ID = ProtocolId.IPv6_AUTH;
+		public static final int HEADER_ID = ProtocolIds.IPv6_AUTH;
 
 		private Authentication() {
 			super(AH);
@@ -385,7 +385,7 @@ public final class Ip6Extensions extends BoundView
 	}
 
 	public final class Esp extends Ip6Extension {
-		public static final int HEADER_ID = ProtocolId.IPv6_ESP;
+		public static final int HEADER_ID = ProtocolIds.IPv6_ESP;
 
 		private Esp() {
 			super(ESP);
@@ -411,7 +411,7 @@ public final class Ip6Extensions extends BoundView
 	}
 
 	public final class Mobility extends Ip6Extension {
-		public static final int HEADER_ID = ProtocolId.IPv6_MOBILITY;
+		public static final int HEADER_ID = ProtocolIds.IPv6_MOBILITY;
 
 		private Mobility() {
 			super(MOBILITY);
@@ -448,7 +448,7 @@ public final class Ip6Extensions extends BoundView
 	}
 
 	public final class Hip extends Ip6Extension {
-		public static final int HEADER_ID = ProtocolId.IPv6_HIP;
+		public static final int HEADER_ID = ProtocolIds.IPv6_HIP;
 
 		private Hip() {
 			super(HIP);
@@ -470,7 +470,7 @@ public final class Ip6Extensions extends BoundView
 	}
 
 	public final class Shim6 extends Ip6Extension {
-		public static final int HEADER_ID = ProtocolId.IPv6_SHIM6;
+		public static final int HEADER_ID = ProtocolIds.IPv6_SHIM6;
 
 		private Shim6() {
 			super(SHIM6);

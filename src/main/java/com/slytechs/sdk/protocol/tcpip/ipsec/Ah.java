@@ -28,8 +28,8 @@ import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.ByteHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
-import com.slytechs.sdk.protocol.core.FixedHeader;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.FixedHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 import com.slytechs.sdk.protocol.tcpip.ip.IpProtocolResolver;
 
 import static java.lang.foreign.MemoryLayout.*;
@@ -85,7 +85,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * </ul>
  * 
  * {@snippet :
- * IpsecAh ah = packet.getHeader(new IpsecAh());
+ * Ah ah = packet.getHeader(new Ah());
  * 
  * System.out.println("SPI: " + Ipsec.spiAsHex(ah.spi()));
  * System.out.println("Sequence: " + ah.sequenceNumber());
@@ -96,14 +96,14 @@ import static java.lang.foreign.MemoryLayout.*;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see Ipsec
- * @see IpsecEsp
+ * @see Esp
  * @see <a href="https://tools.ietf.org/html/rfc4302">RFC 4302 - IP
  *      Authentication Header</a>
  */
-public class IpsecAh extends FixedHeader implements Detailable {
+public class Ah extends FixedHeader implements Detailable {
 
 	/** Protocol HEADER_ID for IPsec AH. */
-	public static final int HEADER_ID = ProtocolId.AH;
+	public static final int HEADER_ID = ProtocolIds.AH;
 
 	/** Minimum AH header length in bytes (no ICV). */
 	public static final int MIN_HEADER_LENGTH = 12;
@@ -125,7 +125,7 @@ public class IpsecAh extends FixedHeader implements Detailable {
 	/**
 	 * Constructs a new IPsec AH header.
 	 */
-	public IpsecAh() {
+	public Ah() {
 		super(HEADER_ID, LAYOUT);
 	}
 

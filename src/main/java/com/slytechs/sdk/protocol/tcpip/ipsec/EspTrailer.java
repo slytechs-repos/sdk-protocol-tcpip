@@ -24,8 +24,8 @@ import java.lang.foreign.MemoryLayout;
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.ByteHandle;
-import com.slytechs.sdk.protocol.core.FixedHeader;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.FixedHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 import com.slytechs.sdk.protocol.tcpip.ip.IpProtocolResolver;
 
 import static java.lang.foreign.MemoryLayout.*;
@@ -60,7 +60,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * 
  * {@snippet :
  * // After decryption, bind trailer to end of decrypted payload
- * IpsecEspTrailer trailer = new IpsecEspTrailer();
+ * EspTrailer trailer = new EspTrailer();
  * trailer.bind(decryptedData, trailerOffset, 2);  // Min 2 bytes
  * 
  * int padLen = trailer.padLength();
@@ -71,12 +71,12 @@ import static java.lang.foreign.MemoryLayout.*;
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see IpsecEsp
+ * @see Esp
  */
-public class IpsecEspTrailer extends FixedHeader implements Detailable {
+public class EspTrailer extends FixedHeader implements Detailable {
 
 	/** Protocol HEADER_ID for IPsec ESP Trailer. */
-	public static final int HEADER_ID = ProtocolId.ESP_TRAILER;
+	public static final int HEADER_ID = ProtocolIds.ESP_TRAILER;
 
 	/** Minimum trailer length (Pad Length + Next Header only). */
 	public static final int MIN_TRAILER_LENGTH = 2;
@@ -95,7 +95,7 @@ public class IpsecEspTrailer extends FixedHeader implements Detailable {
 	/**
 	 * Constructs a new IPsec ESP Trailer.
 	 */
-	public IpsecEspTrailer() {
+	public EspTrailer() {
 		super(HEADER_ID, LAYOUT);
 	}
 

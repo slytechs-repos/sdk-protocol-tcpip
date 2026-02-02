@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
- * EtherType resolver with lazy loading from properties files.
+ * EtherTypes resolver with lazy loading from properties files.
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.

@@ -24,8 +24,8 @@ import java.lang.foreign.MemoryLayout;
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
-import com.slytechs.sdk.protocol.core.FixedHeader;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.FixedHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -36,7 +36,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * VLAN (Virtual Local Area Network) tagging allows a single physical network
  * to be partitioned into multiple logical networks. The 802.1Q tag is inserted
  * into Ethernet frames between the source MAC address and the original
- * EtherType/Length field.
+ * EtherTypes/Length field.
  * </p>
  * 
  * <h2>Header Format</h2>
@@ -44,7 +44,7 @@ import static java.lang.foreign.MemoryLayout.*;
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |PCP|D|         VID             |          EtherType            |
+ * |PCP|D|         VID             |          EtherTypes            |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * </pre>
  * 
@@ -84,7 +84,7 @@ import static java.lang.foreign.MemoryLayout.*;
 public class Vlan extends FixedHeader implements Detailable {
 
 	/** Protocol HEADER_ID for VLAN. */
-	public static final int ID = ProtocolId.VLAN;
+	public static final int ID = ProtocolIds.VLAN;
 
 	/** VLAN header length in bytes. */
 	public static final int HEADER_LENGTH = 4;
@@ -240,14 +240,14 @@ public class Vlan extends FixedHeader implements Detailable {
 	}
 
 	/**
-	 * Returns the encapsulated protocol EtherType (16 bits).
+	 * Returns the encapsulated protocol EtherTypes (16 bits).
 	 * 
 	 * <p>
-	 * This is the EtherType of the payload following the VLAN tag.
+	 * This is the EtherTypes of the payload following the VLAN tag.
 	 * May be another VLAN tag (QinQ) or an upper-layer protocol.
 	 * </p>
 	 *
-	 * @return the EtherType value
+	 * @return the EtherTypes value
 	 * @see EtherTypeResolver
 	 */
 	public int etherType() {
@@ -255,9 +255,9 @@ public class Vlan extends FixedHeader implements Detailable {
 	}
 
 	/**
-	 * Sets the encapsulated protocol EtherType.
+	 * Sets the encapsulated protocol EtherTypes.
 	 *
-	 * @param etherType the EtherType value
+	 * @param etherType the EtherTypes value
 	 */
 	public void setEtherType(int etherType) {
 		ETHERTYPE.setShort(view(), 0, (short) etherType);

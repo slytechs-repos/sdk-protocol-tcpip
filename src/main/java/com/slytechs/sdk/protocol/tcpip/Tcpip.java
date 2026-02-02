@@ -17,34 +17,27 @@
  */
 package com.slytechs.sdk.protocol.tcpip;
 
-import java.util.List;
-
-import com.slytechs.sdk.protocol.core.Header;
-import com.slytechs.sdk.protocol.core.HeaderExtension;
-import com.slytechs.sdk.protocol.core.HeaderFactory;
-import com.slytechs.sdk.protocol.core.Protocol;
-import com.slytechs.sdk.protocol.core.ProtocolId;
-import com.slytechs.sdk.protocol.core.pack.ProtocolPack;
-import com.slytechs.sdk.protocol.tcpip.ethernet.Ethernet;
-import com.slytechs.sdk.protocol.tcpip.impl.TcpipProtocolPack;
-import com.slytechs.sdk.protocol.tcpip.ip.Ip4;
-import com.slytechs.sdk.protocol.tcpip.ip.Ip6;
-import com.slytechs.sdk.protocol.tcpip.tcp.Tcp;
+import com.slytechs.sdk.protocol.core.id.ProtocolId;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public enum Tcpip implements Protocol {
-	ETHERNET(Ethernet.class, ProtocolId.ETHERNET),
-	IPv4(Ip4.class, ProtocolId.IPv4),
-	IPv6(Ip6.class, ProtocolId.IPv6),
-	Tcp(Tcp.class, ProtocolId.TCP),
+public enum Tcpip implements ProtocolId {
+	ETHERNET(ProtocolIds.ETHERNET),
+	VLAN(ProtocolIds.VLAN),
+	MPLS(ProtocolIds.MPLS),
+	IPv4(ProtocolIds.IPv4),
+	IPv6(ProtocolIds.IPv6),
+	AH(ProtocolIds.AH),
+	ESP(ProtocolIds.ESP),
+	ESP_TRAILER(ProtocolIds.ESP_TRAILER),
+	TCP(ProtocolIds.TCP),
+	UDP(ProtocolIds.UDP),
 	;
 
-
 	private final int id;
-	private final HeaderFactory<?> headerFactory;
 
 	public static Tcpip valueOf(int id) {
 		for (var c : values())
@@ -54,41 +47,16 @@ public enum Tcpip implements Protocol {
 		return null;
 	}
 
-	<T extends Header> Tcpip(Class<T> headerClass, int id) {
+	Tcpip(int id) {
 		this.id = id;
-		this.headerFactory = new HeaderFactory<>(headerClass);
 	}
 
 	/**
-	 * @see com.slytechs.jnet.proto.api.Protocol#descriptorId()
+	 * @see com.slytechs.jnet.proto.api.Protocol#id()
 	 */
 	@Override
 	public int id() {
 		return id;
-	}
-
-	/**
-	 * @see com.slytechs.jnet.proto.api.Protocol#pack()
-	 */
-	@Override
-	public ProtocolPack pack() {
-		return TcpipProtocolPack.get();
-	}
-
-	/**
-	 * @see com.slytechs.jnet.proto.api.Protocol#headerFactory()
-	 */
-	@Override
-	public HeaderFactory<?> headerFactory() {
-		return headerFactory;
-	}
-
-	/**
-	 * @see com.slytechs.jnet.proto.api.Protocol#listOptions()
-	 */
-	@Override
-	public List<HeaderExtension> listOptions() {
-		throw new UnsupportedOperationException("not implemented yet");
 	}
 
 }

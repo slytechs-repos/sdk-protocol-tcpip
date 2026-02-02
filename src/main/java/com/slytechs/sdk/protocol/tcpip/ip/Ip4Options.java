@@ -27,9 +27,9 @@ import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
-import com.slytechs.sdk.protocol.core.HeaderOption;
-import com.slytechs.sdk.protocol.core.HeaderOptions;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.HeaderOption;
+import com.slytechs.sdk.protocol.core.header.HeaderOptions;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * IPv4 options container with zero-allocation inner option classes.
@@ -191,7 +191,7 @@ public final class Ip4Options extends BoundView
 		}
 
 		/**
-		 * @see com.slytechs.sdk.protocol.core.HeaderOption#optionId()
+		 * @see com.slytechs.sdk.protocol.core.header.HeaderOption#optionId()
 		 */
 		@Override
 		public int optionId() {
@@ -199,7 +199,7 @@ public final class Ip4Options extends BoundView
 		}
 
 		/**
-		 * @see com.slytechs.sdk.protocol.core.HeaderOption#optionAbbr()
+		 * @see com.slytechs.sdk.protocol.core.header.HeaderOption#optionAbbr()
 		 */
 		@Override
 		public String optionAbbr() {
@@ -208,7 +208,7 @@ public final class Ip4Options extends BoundView
 	}
 
 	public final class Security extends Ip4Option {
-		public static final int HEADER_ID = ProtocolId.IPv4_OPT_SECURITY;
+		public static final int HEADER_ID = ProtocolIds.IPv4_OPT_SECURITY;
 
 		private Security() {
 			super(SEC);
@@ -245,7 +245,7 @@ public final class Ip4Options extends BoundView
 	}
 
 	public final class LooseSourceRoute extends Ip4Option {
-		public static final int HEADER_ID = ProtocolId.IPv4_OPT_LSRR;
+		public static final int HEADER_ID = ProtocolIds.IPv4_OPT_LSRR;
 
 		private LooseSourceRoute() {
 			super(LSR);
@@ -279,7 +279,7 @@ public final class Ip4Options extends BoundView
 	}
 
 	public final class StrictSourceRoute extends Ip4Option {
-		public static final int HEADER_ID = ProtocolId.IPv4_OPT_SSRR;
+		public static final int HEADER_ID = ProtocolIds.IPv4_OPT_SSRR;
 
 		private StrictSourceRoute() {
 			super(SSR);
@@ -313,7 +313,7 @@ public final class Ip4Options extends BoundView
 	}
 
 	public final class RecordRoute extends Ip4Option {
-		public static final int HEADER_ID = ProtocolId.IPv4_OPT_RR;
+		public static final int HEADER_ID = ProtocolIds.IPv4_OPT_RR;
 
 		private RecordRoute() {
 			super(RR);
@@ -355,7 +355,7 @@ public final class Ip4Options extends BoundView
 	}
 
 	public final class Timestamp extends Ip4Option {
-		public static final int HEADER_ID = ProtocolId.IPv4_OPT_TIMESTAMP;
+		public static final int HEADER_ID = ProtocolIds.IPv4_OPT_TIMESTAMP;
 
 		private Timestamp() {
 			super(TS);
@@ -429,7 +429,7 @@ public final class Ip4Options extends BoundView
 	}
 
 	public final class RouterAlert extends Ip4Option {
-		public static final int HEADER_ID = ProtocolId.IPv4_OPT_RA;
+		public static final int HEADER_ID = ProtocolIds.IPv4_OPT_RA;
 
 		private RouterAlert() {
 			super(RTRALT);

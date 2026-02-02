@@ -13,20 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.slytechs.sdk.protocol.tcpip.tcp;
 
-module com.slytechs.sdk.protocol.tcpip {
+import com.slytechs.sdk.protocol.core.ProtocolObject;
+import com.slytechs.sdk.protocol.core.flow.FlowKey;
 
-	exports com.slytechs.sdk.protocol.tcpip;
-	exports com.slytechs.sdk.protocol.tcpip.ethernet;
-	exports com.slytechs.sdk.protocol.tcpip.ip;
-	exports com.slytechs.sdk.protocol.tcpip.tcp;
-	exports com.slytechs.sdk.protocol.tcpip.udp;
+/**
+ * 
+ *
+ * @author Mark Bednarczyk [mark@slytechs.com]
+ * @author Sly Technologies Inc.
+ */
+public interface TcpSegment extends ProtocolObject {
 
-	requires com.slytechs.sdk.common;
-	requires transitive com.slytechs.sdk.protocol.core;
-	requires java.logging;
+	TcpStream tcpStream();
 
-	provides com.slytechs.sdk.protocol.core.spi.PackProvider
-			with com.slytechs.sdk.protocol.tcpip.impl.TcpipProvider;
+	FlowKey flowKey();
 
+	long length();
 }

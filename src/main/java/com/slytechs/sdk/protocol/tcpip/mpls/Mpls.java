@@ -24,8 +24,8 @@ import java.lang.foreign.MemoryLayout;
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
-import com.slytechs.sdk.protocol.core.FixedHeader;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.FixedHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -96,7 +96,7 @@ import static java.lang.foreign.MemoryLayout.*;
 public class Mpls extends FixedHeader implements Detailable {
 
 	/** Protocol HEADER_ID for MPLS. */
-	public static final int HEADER_ID = ProtocolId.MPLS;
+	public static final int HEADER_ID = ProtocolIds.MPLS;
 
 	/** MPLS label header length in bytes. */
 	public static final int HEADER_LENGTH = 4;

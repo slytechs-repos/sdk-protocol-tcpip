@@ -28,9 +28,9 @@ import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
-import com.slytechs.sdk.protocol.core.HeaderOption;
-import com.slytechs.sdk.protocol.core.HeaderOptions;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.HeaderOption;
+import com.slytechs.sdk.protocol.core.header.HeaderOptions;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * TCP options container with zero-allocation inner option classes.
@@ -188,7 +188,7 @@ public final class TcpOptions extends BoundView
 		}
 
 		/**
-		 * @see com.slytechs.sdk.protocol.core.HeaderOption#buildDetail(com.slytechs.sdk.common.detail.DetailBuilder.HeaderBuilder)
+		 * @see com.slytechs.sdk.protocol.core.header.HeaderOption#buildDetail(com.slytechs.sdk.common.detail.DetailBuilder.HeaderBuilder)
 		 */
 		@Override
 		public void buildDetail(HeaderBuilder h) {
@@ -197,7 +197,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class Mss extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_MSS;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_MSS;
 
 		private Mss() {
 			super(MSS);
@@ -218,7 +218,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class WindowScale extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_WSCALE;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_WSCALE;
 
 		private WindowScale() {
 			super(WINDOW_SCALE);
@@ -243,7 +243,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class SackPermitted extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_SACK_PERM;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_SACK_PERM;
 
 		private SackPermitted() {
 			super(SACK_PERMITTED);
@@ -258,7 +258,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class Sack extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_SACK;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_SACK;
 
 		private Sack() {
 			super(SACK);
@@ -298,7 +298,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class Timestamps extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_TIMESTAMP;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_TIMESTAMP;
 
 		private Timestamps() {
 			super(TIMESTAMPS);
@@ -323,7 +323,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class Md5Signature extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_MD5;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_MD5;
 
 		private Md5Signature() {
 			super(MD5_SIGNATURE);
@@ -382,7 +382,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class QuickStart extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_FASTOPEN;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_FASTOPEN;
 
 		private QuickStart() {
 			super(QUICK_START);
@@ -459,7 +459,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class FastOpen extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_FASTOPEN;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_FASTOPEN;
 
 		private FastOpen() {
 			super(FAST_OPEN);
@@ -491,7 +491,7 @@ public final class TcpOptions extends BoundView
 	}
 
 	public final class Multipath extends TcpOption {
-		public static final int HEADER_ID = ProtocolId.TCP_OPT_MPTCP;
+		public static final int HEADER_ID = ProtocolIds.TCP_OPT_MPTCP;
 
 		private Multipath() {
 			super(MPTCP);
@@ -846,7 +846,7 @@ public final class TcpOptions extends BoundView
 		}
 	}
 
-	// Remove the bind() method entirely. Parent Tcp handles super.bind()
+	// Remove the bind() method entirely. Parent TCP handles super.bind()
 
 	@Override
 	public void onUnbind() {

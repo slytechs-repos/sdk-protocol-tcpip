@@ -26,11 +26,11 @@ import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ByteHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
-import com.slytechs.sdk.protocol.core.ProtocolId;
-import com.slytechs.sdk.protocol.core.VariableHeader;
 import com.slytechs.sdk.protocol.core.address.Ip4Address;
 import com.slytechs.sdk.protocol.core.address.Ip4AddressMemory;
 import com.slytechs.sdk.protocol.core.checksum.Checksums;
+import com.slytechs.sdk.protocol.core.header.VariableHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -90,7 +90,7 @@ import static java.lang.foreign.MemoryLayout.*;
 public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 
 	/** Protocol HEADER_ID for IPv4. */
-	public static final int HEADER_ID = ProtocolId.IPv4;
+	public static final int HEADER_ID = ProtocolIds.IPv4;
 
 	/** Minimum IPv4 header length in bytes (without options). */
 	public static final int MIN_HEADER_LENGTH = 20;

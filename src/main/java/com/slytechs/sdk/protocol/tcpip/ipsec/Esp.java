@@ -24,8 +24,8 @@ import java.lang.foreign.MemoryLayout;
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
-import com.slytechs.sdk.protocol.core.FixedHeader;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.FixedHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -92,7 +92,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * </ul>
  * 
  * {@snippet :
- * IpsecEsp esp = packet.getHeader(new IpsecEsp());
+ * Esp esp = packet.getHeader(new Esp());
  * 
  * System.out.println("SPI: " + Ipsec.spiAsHex(esp.spi()));
  * System.out.println("Sequence: " + esp.sequenceNumber());
@@ -104,14 +104,14 @@ import static java.lang.foreign.MemoryLayout.*;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  * @see Ipsec
- * @see IpsecAh
+ * @see Ah
  * @see <a href="https://tools.ietf.org/html/rfc4303">RFC 4303 - IP
  *      Encapsulating Security Payload</a>
  */
-public class IpsecEsp extends FixedHeader implements Detailable {
+public class Esp extends FixedHeader implements Detailable {
 
 	/** Protocol HEADER_ID for IPsec ESP. */
-	public static final int HEADER_ID = ProtocolId.ESP;
+	public static final int HEADER_ID = ProtocolIds.ESP;
 
 	/** ESP header length in bytes (SPI + Sequence Number only). */
 	public static final int HEADER_LENGTH = 8;
@@ -127,7 +127,7 @@ public class IpsecEsp extends FixedHeader implements Detailable {
 	/**
 	 * Constructs a new IPsec ESP header.
 	 */
-	public IpsecEsp() {
+	public Esp() {
 		super(HEADER_ID, LAYOUT);
 	}
 

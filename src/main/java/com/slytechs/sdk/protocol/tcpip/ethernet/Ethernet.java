@@ -25,11 +25,11 @@ import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
-import com.slytechs.sdk.protocol.core.ExtensibleHeader;
-import com.slytechs.sdk.protocol.core.ProtocolId;
 import com.slytechs.sdk.protocol.core.address.MacAddress;
 import com.slytechs.sdk.protocol.core.address.MacAddressMemory;
 import com.slytechs.sdk.protocol.core.checksum.Checksums;
+import com.slytechs.sdk.protocol.core.header.ExtensibleHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -43,6 +43,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * </p>
  * 
  * <h2>Header Format</h2>
+ * 
  * <pre>
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -53,16 +54,16 @@ import static java.lang.foreign.MemoryLayout.*;
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
  * |                      Source MAC Address                       |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |          EtherType/Length     |
+ * |          EtherTypes/Length     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * </pre>
  * 
  * <h2>Frame Types</h2>
  * <ul>
  * <li><b>Ethernet II (DIX)</b> - Type/Length field >= 1536 (0x0600) indicates
- *     EtherType identifying the payload protocol</li>
+ * EtherTypes identifying the payload protocol</li>
  * <li><b>IEEE 802.3</b> - Type/Length field <= 1500 indicates payload length,
- *     followed by LLC/SNAP headers</li>
+ * followed by LLC/SNAP headers</li>
  * </ul>
  * 
  * <h2>Frame Check Sequence (FCS)</h2>
@@ -79,9 +80,9 @@ import static java.lang.foreign.MemoryLayout.*;
  * System.out.println("Destination: " + eth.dst());
  * 
  * if (eth.isEthernetII()) {
- *     System.out.println("EtherType: " + EtherTypeResolver.resolveAbbr(eth.etherType()));
+ * 	System.out.println("EtherTypes: " + EtherTypeResolver.resolveAbbr(eth.etherType()));
  * } else {
- *     System.out.println("IEEE 802.3 Length: " + eth.etherType());
+ * 	System.out.println("IEEE 802.3 Length: " + eth.etherType());
  * }
  * }
  *
@@ -94,7 +95,7 @@ import static java.lang.foreign.MemoryLayout.*;
 public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implements Detailable {
 
 	/** Protocol HEADER_ID for Ethernet. */
-	public static final int HEADER_ID = ProtocolId.ETHERNET;
+	public static final int HEADER_ID = ProtocolIds.ETHERNET;
 
 	/** Ethernet header length in bytes (without FCS). */
 	public static final int HEADER_LENGTH = 14;
@@ -102,39 +103,38 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	/** Ethernet FCS (Frame Check Sequence) length in bytes. */
 	public static final int FCS_LENGTH = 4;
 
-	/** Minimum EtherType value (Ethernet II vs IEEE 802.3 boundary). */
+	/** Minimum EtherTypes value (Ethernet II vs IEEE 802.3 boundary). */
 	public static final int MIN_ETHERTYPE = 0x0600;
 
 	/** Maximum IEEE 802.3 length value. */
 	public static final int MAX_LENGTH = 1500;
 
-	/** EtherType for IPv4. */
+	/** EtherTypes for IPv4. */
 	public static final int ETHERTYPE_IPV4 = 0x0800;
 
-	/** EtherType for IPv6. */
+	/** EtherTypes for IPv6. */
 	public static final int ETHERTYPE_IPV6 = 0x86DD;
 
-	/** EtherType for ARP. */
+	/** EtherTypes for ARP. */
 	public static final int ETHERTYPE_ARP = 0x0806;
 
-	/** EtherType for VLAN (802.1Q). */
+	/** EtherTypes for VLAN (802.1Q). */
 	public static final int ETHERTYPE_VLAN = 0x8100;
 
-	/** EtherType for QinQ (802.1ad). */
+	/** EtherTypes for QinQ (802.1ad). */
 	public static final int ETHERTYPE_QINQ = 0x88A8;
 
-	/** EtherType for MPLS unicast. */
+	/** EtherTypes for MPLS unicast. */
 	public static final int ETHERTYPE_MPLS = 0x8847;
 
-	/** EtherType for MPLS multicast. */
+	/** EtherTypes for MPLS multicast. */
 	public static final int ETHERTYPE_MPLS_MCAST = 0x8848;
 
 	/** Ethernet header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
 			MacAddressMemory.LAYOUT.withName("hdr_dst_addr"),
 			MacAddressMemory.LAYOUT.withName("hdr_src_addr"),
-			U16_BE.withName("hdr_ethertype")
-	);
+			U16_BE.withName("hdr_ethertype"));
 
 	private static final ShortHandle ETHERTYPE = new ShortHandle(LAYOUT, "hdr_ethertype");
 	private static final long DST_ADDR_OFF = MemoryHandle.byteOffset(LAYOUT, "hdr_dst_addr");
@@ -200,7 +200,8 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	/**
 	 * Sets the destination MAC address from a string.
 	 *
-	 * @param macStr MAC address in "XX:XX:XX:XX:XX:XX" or "XX-XX-XX-XX-XX-XX" format
+	 * @param macStr MAC address in "XX:XX:XX:XX:XX:XX" or "XX-XX-XX-XX-XX-XX"
+	 *               format
 	 */
 	public void setDstFromString(String macStr) {
 		setDstFromBytes(MacAddress.parseMacAddress(macStr));
@@ -255,22 +256,23 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	/**
 	 * Sets the source MAC address from a string.
 	 *
-	 * @param macStr MAC address in "XX:XX:XX:XX:XX:XX" or "XX-XX-XX-XX-XX-XX" format
+	 * @param macStr MAC address in "XX:XX:XX:XX:XX:XX" or "XX-XX-XX-XX-XX-XX"
+	 *               format
 	 */
 	public void setSrcFromString(String macStr) {
 		setSrcFromBytes(MacAddress.parseMacAddress(macStr));
 	}
 
 	/**
-	 * Returns the EtherType/Length field (16 bits).
+	 * Returns the EtherTypes/Length field (16 bits).
 	 * 
 	 * <p>
-	 * For Ethernet II frames (value >= 1536), this is the EtherType identifying
-	 * the payload protocol. For IEEE 802.3 frames (value <= 1500), this is the
-	 * payload length.
+	 * For Ethernet II frames (value >= 1536), this is the EtherTypes identifying the
+	 * payload protocol. For IEEE 802.3 frames (value <= 1500), this is the payload
+	 * length.
 	 * </p>
 	 *
-	 * @return the EtherType or length value
+	 * @return the EtherTypes or length value
 	 * @see #isEthernetII()
 	 * @see #isIeee8023()
 	 */
@@ -279,9 +281,9 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	}
 
 	/**
-	 * Sets the EtherType/Length field.
+	 * Sets the EtherTypes/Length field.
 	 *
-	 * @param value the EtherType or length value
+	 * @param value the EtherTypes or length value
 	 */
 	public void setEtherType(int value) {
 		ETHERTYPE.setShort(view(), 0, (short) value);
@@ -291,8 +293,8 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	 * Checks if this is an Ethernet II (DIX) frame.
 	 * 
 	 * <p>
-	 * Ethernet II frames have a Type/Length field >= 1536 (0x0600), which
-	 * indicates an EtherType value identifying the payload protocol.
+	 * Ethernet II frames have a Type/Length field >= 1536 (0x0600), which indicates
+	 * an EtherTypes value identifying the payload protocol.
 	 * </p>
 	 *
 	 * @return true if this is an Ethernet II frame
@@ -306,8 +308,8 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	 * 
 	 * <p>
 	 * IEEE 802.3 frames have a Type/Length field <= 1500, which indicates the
-	 * payload length. The payload is typically followed by LLC and optionally
-	 * SNAP headers.
+	 * payload length. The payload is typically followed by LLC and optionally SNAP
+	 * headers.
 	 * </p>
 	 *
 	 * @return true if this is an IEEE 802.3 frame
@@ -357,9 +359,9 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	 * </p>
 	 * 
 	 * <p>
-	 * Note: The FCS is typically stripped by the NIC. Use this method when
-	 * working with captures that include the FCS (e.g., pcap files captured
-	 * with FCS enabled).
+	 * Note: The FCS is typically stripped by the NIC. Use this method when working
+	 * with captures that include the FCS (e.g., pcap files captured with FCS
+	 * enabled).
 	 * </p>
 	 *
 	 * {@snippet :

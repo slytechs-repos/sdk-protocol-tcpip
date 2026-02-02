@@ -17,7 +17,7 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ipsec;
 
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * Common constants and utilities for IPsec protocols.
@@ -50,12 +50,12 @@ import com.slytechs.sdk.protocol.core.ProtocolId;
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see IpsecAh
- * @see IpsecEsp
+ * @see Ah
+ * @see Esp
  */
 public final class Ipsec {
 	
-	public static final int HEADER_ID = ProtocolId.IPSEC;
+	public static final int HEADER_ID = ProtocolIds.IPSEC;
 
 	/** IP protocol number for AH (Authentication Header). */
 	public static final int IP_PROTOCOL_AH = 51;

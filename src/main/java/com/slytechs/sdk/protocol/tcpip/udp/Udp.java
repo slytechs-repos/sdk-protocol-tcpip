@@ -25,9 +25,9 @@ import java.lang.foreign.MemorySegment;
 import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
-import com.slytechs.sdk.protocol.core.FixedHeader;
-import com.slytechs.sdk.protocol.core.ProtocolId;
 import com.slytechs.sdk.protocol.core.checksum.Checksums;
+import com.slytechs.sdk.protocol.core.header.FixedHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -78,7 +78,7 @@ import static java.lang.foreign.MemoryLayout.*;
 public class Udp extends FixedHeader implements Detailable {
 
 	/** Protocol HEADER_ID for UDP. */
-	public static final int HEADER_ID = ProtocolId.UDP;
+	public static final int HEADER_ID = ProtocolIds.UDP;
 
 	/** UDP header length in bytes (fixed size). */
 	public static final int HEADER_LENGTH = 8;

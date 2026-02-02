@@ -26,9 +26,9 @@ import com.slytechs.sdk.common.detail.DetailBuilder;
 import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
-import com.slytechs.sdk.protocol.core.ProtocolId;
-import com.slytechs.sdk.protocol.core.VariableHeader;
 import com.slytechs.sdk.protocol.core.checksum.Checksums;
+import com.slytechs.sdk.protocol.core.header.VariableHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -76,10 +76,10 @@ import static java.lang.foreign.MemoryLayout.*;
  * if (tcp.isSyn() && !tcp.isAck()) { ... }
  * 
  * // Set flags
- * tcp.setFlags(tcp.flags() | Tcp.FLAG_ACK | Tcp.FLAG_PSH);
+ * tcp.setFlags(tcp.flags() | TCP.FLAG_ACK | TCP.FLAG_PSH);
  * 
  * // Clear flags
- * tcp.clearFlags(Tcp.FLAG_PSH | Tcp.FLAG_URG);
+ * tcp.clearFlags(TCP.FLAG_PSH | TCP.FLAG_URG);
  * }</pre>
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
@@ -89,7 +89,7 @@ import static java.lang.foreign.MemoryLayout.*;
 public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 
 	/** Protocol HEADER_ID for TCP. */
-	public static final int HEADER_ID = ProtocolId.TCP;
+	public static final int HEADER_ID = ProtocolIds.TCP;
 
 	/** Minimum TCP header length in bytes (without options). */
 	public static final int MIN_HEADER_LENGTH = 20;
@@ -280,7 +280,7 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	 * Clears the specified flags.
 	 *
 	 * {@snippet :
-	 * tcp.clearFlags(Tcp.FLAG_PSH | Tcp.FLAG_URG);
+	 * tcp.clearFlags(TCP.FLAG_PSH | TCP.FLAG_URG);
 	 * }
 	 *
 	 * @param flags the flags to clear (use FLAG_* constants)
@@ -602,7 +602,7 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	 * Sets the flags field.
 	 * 
 	 * {@snippet :
-	 * tcp.setFlags(tcp.flags() | Tcp.FLAG_ACK | Tcp.FLAG_PSH);
+	 * tcp.setFlags(tcp.flags() | TCP.FLAG_ACK | TCP.FLAG_PSH);
 	 * }
 	 * 
 	 * @param flags the flags value (use FLAG_* constants)

@@ -27,9 +27,9 @@ import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
-import com.slytechs.sdk.protocol.core.HeaderExtension;
-import com.slytechs.sdk.protocol.core.HeaderExtensions;
-import com.slytechs.sdk.protocol.core.ProtocolId;
+import com.slytechs.sdk.protocol.core.header.HeaderExtension;
+import com.slytechs.sdk.protocol.core.header.HeaderExtensions;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 /**
  * IEEE 802.3 Ethernet extensions container with zero-allocation inner classes.
@@ -128,7 +128,7 @@ public final class Eth8023Extensions extends BoundView
 	}
 
 	public final class Llc extends Eth8023Extension {
-		public static final int HEADER_ID = ProtocolId.LLC;
+		public static final int HEADER_ID = ProtocolIds.LLC;
 
 		private Llc() {
 			super(LLC);
@@ -214,7 +214,7 @@ public final class Eth8023Extensions extends BoundView
 	}
 
 	public final class Snap extends Eth8023Extension {
-		public static final int HEADER_ID = ProtocolId.SNAP;
+		public static final int HEADER_ID = ProtocolIds.SNAP;
 
 		private Snap() {
 			super(SNAP);

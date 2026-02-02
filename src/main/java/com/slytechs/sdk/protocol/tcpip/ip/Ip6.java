@@ -27,10 +27,10 @@ import com.slytechs.sdk.common.memory.MemoryHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ByteHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
-import com.slytechs.sdk.protocol.core.ExtensibleHeader;
-import com.slytechs.sdk.protocol.core.ProtocolId;
 import com.slytechs.sdk.protocol.core.address.Ip6Address;
 import com.slytechs.sdk.protocol.core.address.Ip6AddressMemory;
+import com.slytechs.sdk.protocol.core.header.ExtensibleHeader;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
 import static java.lang.foreign.MemoryLayout.*;
 
@@ -103,7 +103,7 @@ import static java.lang.foreign.MemoryLayout.*;
 public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip, Detailable {
 
 	/** Protocol HEADER_ID for IPv6. */
-	public static final int HEADER_ID = ProtocolId.IPv6;
+	public static final int HEADER_ID = ProtocolIds.IPv6;
 
 	/** IPv6 header length in bytes (fixed size). */
 	public static final int HEADER_LENGTH = 40;
