@@ -17,15 +17,13 @@
  */
 package com.slytechs.sdk.protocol.tcpip.tcp;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.format.Macro;
 import com.slytechs.sdk.protocol.core.checksum.Checksums;
 import com.slytechs.sdk.protocol.core.header.VariableHeader;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
@@ -86,7 +84,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * @author Sly Technologies Inc.
  * @see TcpOptions
  */
-public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
+public class Tcp extends VariableHeader<TcpOptions> {
 
 	/** Protocol HEADER_ID for TCP. */
 	public static final int HEADER_ID = ProtocolIds.TCP;
@@ -96,6 +94,37 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 
 	/** Maximum TCP header length in bytes (with options). */
 	public static final int MAX_HEADER_LENGTH = 60;
+
+	// @formatter:off
+	private static final DataEmitter<Tcp> TCP_EMITTER;
+	static {
+		TCP_EMITTER = new DataEmitter<>();
+		TCP_EMITTER.macro("tcp.flags.str", Macro.flagList(
+				new long[] { 0x100, 0x080, 0x040, 0x020, 0x010, 0x008, 0x004, 0x002, 0x001 },
+				new String[] { "NS", "CWR", "ECE", "URG", "ACK", "PSH", "RST", "SYN", "FIN" },
+				"none"));
+		TCP_EMITTER.section("Transmission Control Protocol, Src Port: {tcp.srcport}, Dst Port: {tcp.dstport}", sec -> sec
+				.field("Source Port", Tcp::srcPort, "tcp.srcport")
+				.field("Destination Port", Tcp::dstPort, "tcp.dstport")
+				.field("Sequence Number", Tcp::seq, "tcp.seq")
+				.field("Acknowledgment Number", Tcp::ack, "tcp.ack")
+				.field("Header Length", tcp -> "%d bytes (%d)".formatted(tcp.hlenBytes(), tcp.hlen()), "tcp.hdr_len")
+				.field("Flags: {tcp.flags:0x%03X} ({tcp.flags:@tcp.flags.str})", Tcp::flags, "tcp.flags", fl -> fl
+						.bitfield("{/000. .... ..../} = Reserved: {@set}", "tcp.flags.res", 9, 3, Tcp::flags)
+						.bitfield("{/...1 .... ..../} = Accurate ECN: {@set}", "tcp.flags.ns", 8, 1, Tcp::flags)
+						.bitfield("{/.... 1... ..../} = Congestion Window Reduced: {@set}", "tcp.flags.cwr", 7, 1, Tcp::flags)
+						.bitfield("{/.... .1.. ..../} = ECN-Echo: {@set}",	"tcp.flags.ece", 6, 1, Tcp::flags)
+						.bitfield("{/.... ..1. ..../} = Urgent: {@set}","tcp.flags.urg", 5, 1, Tcp::flags)
+						.bitfield("{/.... ...1 ..../} = Acknowledgment: {@set}", "tcp.flags.ack", 4, 1, Tcp::flags)
+						.bitfield("{/.... .... 1.../} = Push: {@set}", "tcp.flags.push", 3, 1, Tcp::flags)
+						.bitfield("{/.... .... .1../} = Reset: {@set}","tcp.flags.reset", 2, 1, Tcp::flags)
+						.bitfield("{/.... .... ..1./} = Syn: {@set}", "tcp.flags.syn", 1, 1, Tcp::flags)
+						.bitfield("{/.... .... ...1/} = Fin: {@set}", "tcp.flags.fin", 0, 1, Tcp::flags))
+				.field("Window", Tcp::window, "tcp.window")
+				.field("Checksum", "{tcp.checksum:0x%04X}", Tcp::checksum, "tcp.checksum")
+				.field("Urgent Pointer", Tcp::urgent, "tcp.urgent"));
+	}
+	// @formatter:on
 
 	/** TCP header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
@@ -170,54 +199,6 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	 */
 	public long ack() {
 		return ACK_NUMBER.getInt(view()) & 0xFFFFFFFFL;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-
-		b.header("Transmission Control Protocol", "TCP", HEADER_ID, off, (int) headerLength(), h -> {
-			h.summaryf("%d → %d [%s] Seq=%d Ack=%d Win=%d",
-					srcPort(), dstPort(), flagsToString(),
-					seq(), ack(), window());
-
-			h.field("Source Port", srcPort(), shortAt(off));
-			h.field("Destination Port", dstPort(), shortAt(off + 2));
-			h.field("Sequence Number", seq(), intAt(off + 4));
-			h.field("Acknowledgment Number", ack(), intAt(off + 8));
-
-			h.expandField("Data Offset/Flags", hlenFlags(),
-					String.format("Offset=%d, Flags=%s", hlenBytes(), flagsToString()),
-					shortAt(off + 12), f -> {
-						f.field("Data Offset", hlen(), hlenBytes() + " bytes", bitsAt(off * 8L + 96, 4));
-						f.field("Reserved", reserved(), bitsAt(off * 8L + 100, 3));
-						f.field("NS", isNs() ? 1 : 0, bitsAt(off * 8L + 103, 1));
-						f.field("CWR", isCwr() ? 1 : 0, bitsAt(off * 8L + 104, 1));
-						f.field("ECE", isEce() ? 1 : 0, bitsAt(off * 8L + 105, 1));
-						f.field("URG", isUrg() ? 1 : 0, bitsAt(off * 8L + 106, 1));
-						f.field("ACK", isAck() ? 1 : 0, bitsAt(off * 8L + 107, 1));
-						f.field("PSH", isPsh() ? 1 : 0, bitsAt(off * 8L + 108, 1));
-						f.field("RST", isRst() ? 1 : 0, bitsAt(off * 8L + 109, 1));
-						f.field("SYN", isSyn() ? 1 : 0, bitsAt(off * 8L + 110, 1));
-						f.field("FIN", isFin() ? 1 : 0, bitsAt(off * 8L + 111, 1));
-					});
-
-			int computedChecksum = computeChecksum(off-20, hlenBytes(), false);
-			h.field("Window", window(), shortAt(off + 14));
-			h.fieldHex("Checksum", checksum(), 4, shortAt(off + 16));
-			h.fieldHex("Computed checksum", computedChecksum, 4, shortAt(off + 16));
-			h.field("Urgent Pointer", urgent(), shortAt(off + 18));
-
-			// Options as nested sections
-			if (hasOptions()) {
-			    for (TcpOptions.TcpOption opt : options()) {
-		            h.section(opt.optionName(), opt.optionAbbr(), s -> opt.buildDetail(s));
-			    }
-			}
-		});
 	}
 
 	/**
@@ -679,14 +660,6 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	}
 
 	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
-	}
-
-	/**
 	 * Returns the urgent pointer field (16 bits).
 	 * 
 	 * <p>
@@ -712,5 +685,13 @@ public class Tcp extends VariableHeader<TcpOptions> implements Detailable {
 	 */
 	public int window() {
 		return WINDOW.getShort(view()) & 0xFFFF;
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
+	 */
+	@Override
+	public DataEmitter<?> dataEmitter() {
+		return TCP_EMITTER;
 	}
 }

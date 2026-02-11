@@ -17,16 +17,16 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ip;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
+import java.util.Map;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ByteHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.Textual;
+import com.slytechs.sdk.common.text.format.Macro;
 import com.slytechs.sdk.protocol.core.address.Ip6Address;
 import com.slytechs.sdk.protocol.core.address.Ip6AddressMemory;
 import com.slytechs.sdk.protocol.core.header.ExtensibleHeader;
@@ -100,13 +100,61 @@ import static java.lang.foreign.MemoryLayout.*;
  * @see Ip6Extensions
  * @see Ip
  */
-public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip, Detailable {
+public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip {
 
 	/** Protocol HEADER_ID for IPv6. */
 	public static final int HEADER_ID = ProtocolIds.IPv6;
 
 	/** IPv6 header length in bytes (fixed size). */
 	public static final int HEADER_LENGTH = 40;
+
+	// @formatter:off
+	private static final String SUMMARY = "Internet Protocol Version 6, Src: {ipv6.src}, Dst: {ipv6.dst}";
+
+	private static final DataEmitter<Ip6> IP6_EMITTER;
+	static {
+		IP6_EMITTER = new DataEmitter<>();
+
+		IP6_EMITTER.macro("ipv6.dsfield.dscp.name", Macro.enumLookup(Map.of(
+				0, "CS0", 8, "CS1", 16, "CS2", 24, "CS3", 32, "CS4", 40, "CS5", 48, "CS6", 56, "CS7", 46, "EF")));
+		IP6_EMITTER.macro("ipv6.dsfield.ecn.name", Macro.enumLookup(Map.of(
+				0, "Not-ECT", 1, "ECT(1)", 2, "ECT(0)", 3, "CE")));
+
+		IP6_EMITTER.section(SUMMARY, sec -> sec
+				.bitfield("{/1111 .... .... .... .... .... .... ..../} = Version: {>>}",
+						"ipv6.version", 28, 4, Ip6::vtcFlow)
+				.field("Traffic Class: {ipv6.tclass:0x%02X}", Ip6::trafficClass, "ipv6.tclass", tc -> tc
+						.bitfield("{/1111 11../} = Differentiated Services Codepoint: {@ipv6.dsfield.dscp.name} ({>>})",
+								"ipv6.tclass.dscp", 0, 6, Ip6::dscp)
+						.bitfield("{/.... ..11/} = Explicit Congestion Notification: {@ipv6.dsfield.ecn.name} ({>>})",
+								"ipv6.tclass.ecn", 6, 2, Ip6::ecn))
+				.bitfield("{/.... .... .... 1111 1111 1111 1111 1111/} = Flow Label: {>>:0x%05X}",
+						"ipv6.flow", 0, 20, Ip6::vtcFlow)
+				.field("Payload Length", Ip6::payloadLength, "ipv6.plen")
+				.field("Next Header", ip6 -> IpProtocolResolver.resolve(ip6.nextHeader()), "ipv6.nxt")
+				.field("Hop Limit", Ip6::hopLimit, "ipv6.hlim")
+				.field("Source Address", Ip6::src, "ipv6.src")
+				.field("Destination Address", Ip6::dst, "ipv6.dst")
+				.delegate((e, ip6, c) -> {
+				    if (!ip6.hasExtensions())
+				        return e;
+				    for (Ip6Extensions.Ip6Extension ext : ip6.extensions()) {
+				        if (ext instanceof Textual t)
+				            t.emitText(e, c);
+				        else {
+				            e.summary("IPv6 Extension - %s".formatted(ext.extensionName()));
+				            e.push();
+				            e.field("Next Header", "%s (%d)".formatted(
+				                    Ip6Extensions.extensionName(ext.nextHeader()),
+				                    ext.nextHeader()));
+				            e.field("Length", String.valueOf(ext.extensionLength()));
+				            e.pop();
+				        }
+				    }
+				    return e;
+				}));
+	}
+	// @formatter:on
 
 	/** IPv6 header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
@@ -574,41 +622,10 @@ public class Ip6 extends ExtensibleHeader<Ip6Extensions> implements Ip, Detailab
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
 	 */
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-
-		b.header("Internet Protocol version 6", "IPv6", HEADER_ID, off, HEADER_LENGTH, h -> {
-
-			h.expandField("Version/Traffic Class/Flow Label", vtcFlow(),
-					String.format("Version=%d, TC=%d, Flow=%d", version(), trafficClass(), flowLabel()),
-					intAt(off), f -> {
-						f.field("Version", version(), bitsAt(off * 8L, 4));
-						f.field("Traffic Class", trafficClass(), bitsAt(off * 8L + 4, 8));
-						f.field("DSCP", dscp(), bitsAt(off * 8L + 4, 6));
-						f.field("ECN", ecn(), bitsAt(off * 8L + 10, 2));
-						f.field("Flow Label", flowLabel(), bitsAt(off * 8L + 12, 20));
-					});
-
-			h.field("Payload Length", payloadLength(), shortAt(off + 4));
-			h.field("Next Header", nextHeader(), IpProtocolResolver.resolveAbbrOrNumber(nextHeader()), byteAt(off + 6));
-			h.field("Hop Limit", hopLimit(), byteAt(off + 7));
-			h.field("Source", src().toString(), bits(off + 8, 16));
-			h.field("Destination", dst().toString(), bits(off + 24, 16));
-		});
-
-		if (hasExtensions()) {
-			extensions().buildDetail(b);
-		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
+	public DataEmitter<?> dataEmitter() {
+		return IP6_EMITTER;
 	}
 }

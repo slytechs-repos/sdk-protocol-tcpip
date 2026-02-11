@@ -17,13 +17,10 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ipsec;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
 import com.slytechs.sdk.protocol.core.header.FixedHeader;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
@@ -108,7 +105,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * @see <a href="https://tools.ietf.org/html/rfc4303">RFC 4303 - IP
  *      Encapsulating Security Payload</a>
  */
-public class Esp extends FixedHeader implements Detailable {
+public class Esp extends FixedHeader {
 
 	/** Protocol HEADER_ID for IPsec ESP. */
 	public static final int HEADER_ID = ProtocolIds.ESP;
@@ -124,6 +121,22 @@ public class Esp extends FixedHeader implements Detailable {
 	private static final IntHandle SPI = new IntHandle(LAYOUT, "hdr_spi");
 	private static final IntHandle SEQUENCE = new IntHandle(LAYOUT, "hdr_sequence");
 
+	// @formatter:off
+	private static final String SUMMARY =
+			"IPsec Encapsulating Security Payload, SPI: {esp.spi:0x%08X}, Seq: {esp.seq}";
+
+	private static final DataEmitter<Esp> ESP_EMITTER;
+	static {
+		ESP_EMITTER = new DataEmitter<>();
+
+		ESP_EMITTER.section(SUMMARY, sec -> sec
+				.field("Security Parameters Index", "{esp.spi:0x%08X}", Esp::spi, "esp.spi")
+				.field("Sequence Number", Esp::sequenceNumberUnsigned, "esp.seq")
+				.section("Encrypted Payload", enc -> enc
+						.field("Offset", Esp::encryptedPayloadOffset, "esp.enc.offset")
+						.meta("Note", "Payload encrypted - cannot parse without decryption")));
+	}
+	// @formatter:on
 	/**
 	 * Constructs a new IPsec ESP header.
 	 */
@@ -223,32 +236,10 @@ public class Esp extends FixedHeader implements Detailable {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
 	 */
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-
-		b.header("IPsec Encapsulating Security Payload", "ESP", HEADER_ID, off, HEADER_LENGTH, h -> {
-			h.summaryf("SPI=%s Seq=%d",
-					Ipsec.spiAsHex(spi()),
-					sequenceNumberUnsigned());
-
-			h.fieldHex("SPI", spi(), 8, intAt(off));
-			h.field("Sequence Number", sequenceNumberUnsigned(), intAt(off + 4));
-
-			h.section("Encrypted Payload", "Encrypted", s -> {
-				s.field("Offset", encryptedPayloadOffset());
-				s.field("Note", "Payload encrypted - cannot parse Next Header without decryption");
-			});
-		});
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
+	public DataEmitter<?> dataEmitter() {
+		return ESP_EMITTER;
 	}
 }

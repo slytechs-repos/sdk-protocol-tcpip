@@ -17,15 +17,15 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ip;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
+import java.util.Map;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ByteHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.Textual;
+import com.slytechs.sdk.common.text.format.Macro;
 import com.slytechs.sdk.protocol.core.address.Ip4Address;
 import com.slytechs.sdk.protocol.core.address.Ip4AddressMemory;
 import com.slytechs.sdk.protocol.core.checksum.Checksums;
@@ -87,7 +87,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * @see Ip4Options
  * @see Ip
  */
-public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
+public class Ip4 extends VariableHeader<Ip4Options> implements Ip {
 
 	/** Protocol HEADER_ID for IPv4. */
 	public static final int HEADER_ID = ProtocolIds.IPv4;
@@ -97,6 +97,67 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 
 	/** Maximum IPv4 header length in bytes (with options). */
 	public static final int MAX_HEADER_LENGTH = 60;
+
+	// @formatter:off
+	private static final String SUMMARY = "Internet Protocol Version 4, Src: {ip.src}, Dst: {ip.dst}";
+	private static final DataEmitter<Ip4> IP4_EMITTER;
+	static {
+		IP4_EMITTER = new DataEmitter<>();
+
+		IP4_EMITTER.macro("ip.dsfield.dscp.name", Macro.enumLookup(Map.of(
+				0, "CS0", 8, "CS1", 16, "CS2", 24, "CS3", 32, "CS4", 40, "CS5", 48, "CS6", 56, "CS7", 46, "EF")));
+		IP4_EMITTER.macro("ip.dsfield.ecn.name", Macro.enumLookup(Map.of(
+				0, "Not-ECT", 1, "ECT(1)", 2, "ECT(0)", 3, "CE")));
+		IP4_EMITTER.macro("ip.flags.str", Macro.flagList(
+				new long[] { 0x8000, 0x4000, 0x2000 },
+				new String[] { "RSV", "DF", "MF" },
+				"none"));
+
+		IP4_EMITTER.section(SUMMARY, sec -> sec
+				.bitfield("{/1111 ..../} = Version: {>>}",
+						"ip.version", 0, 4, Ip4::versionIhl)
+				.bitfield("{/.... 1111/} = Header Length: {>> * 4} bytes ({>>})",
+						"ip.hdr_len", 4, 4, Ip4::versionIhl)
+				.field("Differentiated Services Field: {ip.dsfield:0x%02X}", Ip4::tos, "ip.dsfield", ds -> ds
+						.bitfield("{/1111 11../} = Differentiated Services Codepoint: {@ip.dsfield.dscp.name} ({>>})",
+								"ip.dsfield.dscp", 0, 6, Ip4::dscp)
+						.bitfield("{/.... ..11/} = Explicit Congestion Notification: {@ip.dsfield.ecn.name} ({>>})",
+								"ip.dsfield.ecn", 6, 2, Ip4::ecn))
+				.field("Total Length", Ip4::totalLength, "ip.len")
+				.field("Identification", "{ip.id:0x%04X} ({ip.id})", Ip4::id, "ip.id")
+				.field("Flags: {ip.flags:0x%04X} ({ip.flags:@ip.flags.str})", Ip4::flagsOffset, "ip.flags", fl -> fl
+						.bitfield("{/1... .... .... ..../} = Reserved: {@set}",
+								"ip.flags.rsv", 15, 1, Ip4::flagsOffset)
+						.bitfield("{/.1.. .... .... ..../} = Don't Fragment: {@set}",
+								"ip.flags.df", 14, 1, Ip4::flagsOffset)
+						.bitfield("{/..1. .... .... ..../} = More Fragments: {@set}",
+								"ip.flags.mf", 13, 1, Ip4::flagsOffset)
+						.bitfield("{/...1 1111 1111 1111/} = Fragment Offset: {>>}",
+								"ip.frag_offset", 0, 13, Ip4::flagsOffset))
+				.field("Time to Live", Ip4::ttl, "ip.ttl")
+				.field("Protocol", Ip4::protocolName, "ip.proto")
+				.field("Header Checksum", "{ip.checksum:0x%04X}", Ip4::checksum, "ip.checksum")
+				.meta("Header checksum status", Ip4::checksumStatus, "ip.checksum.status")
+				.field("Source Address", Ip4::src, "ip.src")
+				.field("Destination Address", Ip4::dst, "ip.dst")
+				.delegate((e, ip4, c) -> {
+				    if (!ip4.hasOptions())
+				        return e;
+				    for (Ip4Options.Ip4Option opt : ip4.options()) {
+				        if (opt instanceof Textual t)
+				            t.emitText(e, c);
+				        else {
+				            e.summary("IPv4 Option - %s".formatted(opt.optionName()));
+				            e.push();
+				            e.field("Type", opt.optionName());
+				            e.field("Length", String.valueOf(opt.optionLength()));
+				            e.pop();
+				        }
+				    }
+				    return e;
+				}));
+	}
+	// @formatter:on
 
 	/** IPv4 header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
@@ -147,60 +208,6 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 	 */
 	public Ip4() {
 		super(HEADER_ID, LAYOUT);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-
-		b.header("Internet Protocol version 4", "IPv4", HEADER_ID, off, (int) headerLength(), h -> {
-		    h.summaryf("%s → %s %s", src(), dst(), IpProtocolResolver.resolveAbbrOrNumber(protocol()));
-
-			h.expandField("Version/IHL", versionIhl(),
-					String.format("Version=%d, IHL=%d", version(), ihl()),
-					byteAt(off), f -> {
-						f.field("Version", version(), bitsAt(off * 8L, 4));
-						f.field("Header Length", ihl(), ihlBytes() + " bytes", bitsAt(off * 8L + 4, 4));
-					});
-
-			h.expandField("Differentiated Services", tos(),
-					String.format("DSCP=%d, ECN=%d", dscp(), ecn()),
-					byteAt(off + 1), f -> {
-						f.field("DSCP", dscp(), bitsAt((off + 1) * 8L, 6));
-						f.field("ECN", ecn(), bitsAt((off + 1) * 8L + 6, 2));
-					});
-
-			h.field("Total Length", totalLength(), shortAt(off + 2));
-			h.fieldHex("Identification", id(), 4, shortAt(off + 4));
-
-			h.expandField("Flags/Fragment Offset", flagsOffset(),
-					String.format("Flags=%s, Offset=%d", flagsToString(), fragOffset()),
-					shortAt(off + 6), f -> {
-						f.field("Reserved", isReserved() ? 1 : 0, bitsAt((off + 6) * 8L, 1));
-						f.field("Don't Fragment", isDf() ? 1 : 0, isDf() ? "Set" : "Not set", bitsAt((off + 6) * 8L + 1,
-								1));
-						f.field("More Fragments", isMf() ? 1 : 0, isMf() ? "Set" : "Not set", bitsAt((off + 6) * 8L + 2,
-								1));
-						f.field("Fragment Offset", fragOffset(), fragOffsetBytes() + " bytes", bitsAt((off + 6) * 8L
-								+ 3, 13));
-					});
-			
-			int computedChecksum = computeChecksum();
-
-			h.field("Time to Live", ttl(), byteAt(off + 8));
-			h.field("Protocol", protocol(), IpProtocolResolver.resolveAbbrOrNumber(protocol()), byteAt(off + 9));
-			h.fieldHex("Checksum", checksum(), 4, shortAt(off + 10));
-			h.fieldHex("Computed checksum", computedChecksum, 4, shortAt(off + 10));
-			h.field("Source", src().toString(), intAt(off + 12));
-			h.field("Destination", dst().toString(), intAt(off + 16));
-		});
-
-		if (hasOptions()) {
-			options().buildDetail(b);
-		}
 	}
 
 	/**
@@ -796,14 +803,6 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 	}
 
 	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
-	}
-
-	/**
 	 * Returns the Total Length field (16 bits).
 	 * 
 	 * <p>
@@ -842,4 +841,21 @@ public class Ip4 extends VariableHeader<Ip4Options> implements Ip, Detailable {
 	public int versionIhl() {
 		return VERSION_IHL.getByte(view()) & 0xFF;
 	}
+
+	public String protocolName() {
+		return IpProtocolResolver.resolve(protocol());
+	}
+
+	private String checksumStatus() {
+		return "Unverified";
+	}
+
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
+	 */
+	@Override
+	public DataEmitter<?> dataEmitter() {
+		return IP4_EMITTER;
+	}
+
 }

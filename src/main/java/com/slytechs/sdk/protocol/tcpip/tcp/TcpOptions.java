@@ -17,15 +17,9 @@
  */
 package com.slytechs.sdk.protocol.tcpip.tcp;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.DetailBuilder.HeaderBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
-import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.protocol.core.header.HeaderOption;
@@ -40,7 +34,7 @@ import com.slytechs.sdk.protocol.core.id.ProtocolIds;
  * @since 1.0
  */
 public final class TcpOptions extends BoundView
-		implements HeaderOptions<TcpOptions.TcpOption>, Detailable,
+		implements HeaderOptions<TcpOptions.TcpOption>,
 		Iterable<TcpOptions.TcpOption> {
 
 	public static final int EOL = 0;
@@ -176,24 +170,6 @@ public final class TcpOptions extends BoundView
 			this.offset = offset;
 			this.length = length;
 		}
-
-		// Base TcpOption
-		public void buildDetail(DetailBuilder.FieldContainer f) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			f.field("Kind", id, byteAt(hdrOff));
-			f.field("Length", length, byteAt(hdrOff + 1));
-			if (length > 2) {
-				f.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-			}
-		}
-
-		/**
-		 * @see com.slytechs.sdk.protocol.core.header.HeaderOption#buildDetail(com.slytechs.sdk.common.detail.DetailBuilder.HeaderBuilder)
-		 */
-		@Override
-		public void buildDetail(HeaderBuilder h) {
-			buildDetail((DetailBuilder.FieldContainer) h);
-		}
 	}
 
 	public final class Mss extends TcpOption {
@@ -205,14 +181,6 @@ public final class TcpOptions extends BoundView
 
 		public int mss() {
 			return isPresent() ? buffer.getShortBE(offset + 2) & 0xFFFF : DEFAULT_MSS;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.FieldContainer f) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			f.field("Kind", id, byteAt(hdrOff));
-			f.field("Length", length, byteAt(hdrOff + 1));
-			f.field("MSS", mss(), mss() + " bytes", shortAt(hdrOff + 2));
 		}
 
 	}
@@ -231,15 +199,6 @@ public final class TcpOptions extends BoundView
 		public int multiplier() {
 			return 1 << shiftCount();
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.FieldContainer f) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			f.field("Kind", id, byteAt(hdrOff));
-			f.field("Length", length, byteAt(hdrOff + 1));
-			f.field("Shift Count", shiftCount(), shiftCount() + " (multiply by " + multiplier() + ")", byteAt(hdrOff
-					+ 2));
-		}
 	}
 
 	public final class SackPermitted extends TcpOption {
@@ -247,13 +206,6 @@ public final class TcpOptions extends BoundView
 
 		private SackPermitted() {
 			super(SACK_PERMITTED);
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
 		}
 	}
 
@@ -279,22 +231,6 @@ public final class TcpOptions extends BoundView
 				return -1;
 			return buffer.getIntBE(offset + 6 + index * 8) & 0xFFFFFFFFL;
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.FieldContainer f) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			f.field("Kind", id, byteAt(hdrOff));
-			f.field("Length", length, byteAt(hdrOff + 1));
-			int blocks = blockCount();
-			for (int j = 0; j < blocks; j++) {
-				int blockOff = hdrOff + 2 + j * 8;
-				int idx = j;
-				f.section("Block " + j, "", s -> {
-					s.field("Left Edge", leftEdge(idx), intAt(blockOff));
-					s.field("Right Edge", rightEdge(idx), intAt(blockOff + 4));
-				});
-			}
-		}
 	}
 
 	public final class Timestamps extends TcpOption {
@@ -311,15 +247,6 @@ public final class TcpOptions extends BoundView
 		public long tsEcr() {
 			return isPresent() ? buffer.getIntBE(offset + 6) & 0xFFFFFFFFL : -1;
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.FieldContainer f) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			f.field("Kind", id, byteAt(hdrOff));
-			f.field("Length", length, byteAt(hdrOff + 1));
-			f.field("TSval", tsVal(), intAt(hdrOff + 2));
-			f.field("TSecr", tsEcr(), intAt(hdrOff + 6));
-		}
 	}
 
 	public final class Md5Signature extends TcpOption {
@@ -335,14 +262,6 @@ public final class TcpOptions extends BoundView
 
 		public int digestOffset() {
 			return isPresent() ? offset + 2 : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("Digest", "[" + digestLength() + " bytes]", bits(hdrOff + 2, digestLength()));
 		}
 	}
 
@@ -366,18 +285,6 @@ public final class TcpOptions extends BoundView
 
 		public int macOffset() {
 			return isPresent() ? offset + 4 : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("KeyID", keyId(), byteAt(hdrOff + 2));
-			h.field("RNextKeyID", nextKeyId(), byteAt(hdrOff + 3));
-			if (macLength() > 0) {
-				h.field("MAC", "[" + macLength() + " bytes]", bits(hdrOff + 4, macLength()));
-			}
 		}
 	}
 
@@ -403,21 +310,6 @@ public final class TcpOptions extends BoundView
 		public int nonce() {
 			return isPresent() ? buffer.getInt(offset + 4) >>> 2 : -1;
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.expandField("Func/Rate", buffer.get(offset + 2) & 0xFF,
-					String.format("Func=%d, Rate=%d", function(), rate()),
-					byteAt(hdrOff + 2), f -> {
-						f.field("Function", function(), bitsAt((hdrOff + 2) * 8L, 4));
-						f.field("Rate", rate(), bitsAt((hdrOff + 2) * 8L + 4, 4));
-					});
-			h.field("TTL Diff", ttlDiff(), byteAt(hdrOff + 3));
-			h.fieldHex("Nonce", nonce(), 8, intAt(hdrOff + 4));
-		}
 	}
 
 	public final class UserTimeout extends TcpOption {
@@ -442,20 +334,6 @@ public final class TcpOptions extends BoundView
 			int val = raw & 0x7FFF;
 			return gran == 1 ? val : val * 60;
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			String granStr = granularity() == 1 ? "seconds" : "minutes";
-			h.expandField("Timeout", buffer.getShort(offset + 2) & 0xFFFF,
-					timeoutSeconds() + " seconds",
-					shortAt(hdrOff + 2), f -> {
-						f.field("Granularity", granularity(), granStr, bitsAt((hdrOff + 2) * 8L, 1));
-						f.field("Value", value(), bitsAt((hdrOff + 2) * 8L + 1, 15));
-					});
-		}
 	}
 
 	public final class FastOpen extends TcpOption {
@@ -475,18 +353,6 @@ public final class TcpOptions extends BoundView
 
 		public boolean isRequest() {
 			return isPresent() && cookieLength() == 0;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			if (isRequest()) {
-				h.field("Type", "Cookie Request");
-			} else {
-				h.field("Cookie", "[" + cookieLength() + " bytes]", bits(hdrOff + 2, cookieLength()));
-			}
 		}
 	}
 
@@ -522,28 +388,6 @@ public final class TcpOptions extends BoundView
 				return -1;
 			return buffer.getLong(offset + 12);
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.expandField("Subtype/Version", buffer.get(offset + 2) & 0xFF,
-					mptcpSubtypeName(subtype()),
-					byteAt(hdrOff + 2), f -> {
-						f.field("Subtype", subtype(), bitsAt((hdrOff + 2) * 8L, 4));
-						if (subtype() == MPTCP_MP_CAPABLE) {
-							f.field("Version", version(), bitsAt((hdrOff + 2) * 8L + 4, 4));
-						}
-					});
-			h.fieldHex("Flags", flags(), 2, byteAt(hdrOff + 3));
-			if (subtype() == MPTCP_MP_CAPABLE && length >= 12) {
-				h.fieldHex("Sender Key", (int) (senderKey() >>> 32), 16, longAt(hdrOff + 4));
-				if (length >= 20) {
-					h.fieldHex("Receiver Key", (int) (receiverKey() >>> 32), 16, longAt(hdrOff + 12));
-				}
-			}
-		}
 	}
 
 	public final class AccEcn extends TcpOption {
@@ -572,19 +416,6 @@ public final class TcpOptions extends BoundView
 				return -1;
 			return ((buffer.get(offset + 8) & 0xFF) << 16) | (buffer.getShort(offset + 9) & 0xFFFF);
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			if (length >= 5)
-				h.field("EE0 Counter", ee0(), bits(hdrOff + 2, 3));
-			if (length >= 8)
-				h.field("ECEB Counter", eceb(), bits(hdrOff + 5, 3));
-			if (length >= 11)
-				h.field("CE Counter", ce(), bits(hdrOff + 8, 3));
-		}
 	}
 
 	public final class Encryption extends TcpOption {
@@ -597,15 +428,6 @@ public final class TcpOptions extends BoundView
 			return isPresent() ? length - 2 : 0;
 		}
 
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			if (dataLength() > 0) {
-				h.field("Data", "[" + dataLength() + " bytes]", bits(hdrOff + 2, dataLength()));
-			}
-		}
 	}
 
 	public final class Experiment extends TcpOption {
@@ -615,19 +437,6 @@ public final class TcpOptions extends BoundView
 
 		public int exId() {
 			return isPresent() && length >= 4 ? buffer.getShort(offset + 2) & 0xFFFF : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = TCP_HEADER_MIN + offset;
-			h.field("Kind", id, byteAt(hdrOff));
-			h.field("Length", length, byteAt(hdrOff + 1));
-			if (length >= 4) {
-				h.fieldHex("ExID", exId(), 4, shortAt(hdrOff + 2));
-			}
-			if (length > 4) {
-				h.field("Data", "[" + (length - 4) + " bytes]", bits(hdrOff + 4, length - 4));
-			}
 		}
 	}
 
@@ -965,20 +774,4 @@ public final class TcpOptions extends BoundView
 		};
 	}
 
-	@Override
-	public void buildDetail(DetailBuilder b) {
-		ensureParsed();
-		if (chainLength == 0)
-			return;
-
-		for (TcpOption opt : this) {
-			int hdrOff = TCP_HEADER_MIN + opt.offset;
-			b.header("TCP Option - " + opt.optionName(), "", opt.id, hdrOff, opt.length, opt::buildDetail);
-		}
-	}
-
-	@Override
-	public String toString() {
-		return new TextRenderer().render(getDetail());
-	}
 }

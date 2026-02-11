@@ -17,14 +17,9 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ip;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
-import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.protocol.core.header.HeaderOption;
@@ -39,7 +34,7 @@ import com.slytechs.sdk.protocol.core.id.ProtocolIds;
  * @since 1.0
  */
 public final class Ip4Options extends BoundView
-		implements HeaderOptions<Ip4Options.Ip4Option>, Detailable, Iterable<Ip4Options.Ip4Option> {
+		implements HeaderOptions<Ip4Options.Ip4Option>, Iterable<Ip4Options.Ip4Option> {
 
 	public static final int EOOL = 0;
 	public static final int NOP = 1;
@@ -176,20 +171,6 @@ public final class Ip4Options extends BoundView
 			return Ip4Options.optionName(type);
 		}
 
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			h.expandField("Type", type, formatType(type), byteAt(hdrOff), f -> {
-				f.field("Copied", isCopied() ? 1 : 0, isCopied() ? "Yes" : "No", bitsAt(hdrOff * 8L, 1));
-				f.field("Class", optionClass(), className(optionClass()), bitsAt(hdrOff * 8L + 1, 2));
-				f.field("Number", optionNumber(), bitsAt(hdrOff * 8L + 3, 5));
-			});
-			h.field("Length", length, byteAt(hdrOff + 1));
-			if (length > 2) {
-				h.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-			}
-		}
-
 		/**
 		 * @see com.slytechs.sdk.protocol.core.header.HeaderOption#optionId()
 		 */
@@ -231,17 +212,6 @@ public final class Ip4Options extends BoundView
 				return -1;
 			return ((buffer.get(offset + 7) & 0xFF) << 16) | (buffer.getShort(offset + 8) & 0xFFFF);
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("Classification", level(), securityLevelName(level()), byteAt(hdrOff + 2));
-			h.fieldHex("Compartments", compartments(), 4, shortAt(hdrOff + 3));
-			h.fieldHex("Handling", handling(), 4, shortAt(hdrOff + 5));
-			h.fieldHex("TCC", tcc(), 6, bits(hdrOff + 7, 3));
-		}
 	}
 
 	public final class LooseSourceRoute extends Ip4Option {
@@ -264,18 +234,6 @@ public final class Ip4Options extends BoundView
 				return 0;
 			return buffer.getInt(offset + 3 + index * 4);
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("Pointer", pointer(), byteAt(hdrOff + 2));
-			for (int i = 0; i < addressCount(); i++) {
-				int idx = i;
-				h.field("Route " + i, formatIp4(address(idx)), intAt(hdrOff + 3 + i * 4));
-			}
-		}
 	}
 
 	public final class StrictSourceRoute extends Ip4Option {
@@ -297,18 +255,6 @@ public final class Ip4Options extends BoundView
 			if (!isPresent() || index < 0 || index >= addressCount())
 				return 0;
 			return buffer.getInt(offset + 3 + index * 4);
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("Pointer", pointer(), byteAt(hdrOff + 2));
-			for (int i = 0; i < addressCount(); i++) {
-				int idx = i;
-				h.field("Route " + i, formatIp4(address(idx)), intAt(hdrOff + 3 + i * 4));
-			}
 		}
 	}
 
@@ -337,20 +283,6 @@ public final class Ip4Options extends BoundView
 			if (!isPresent() || index < 0 || index >= capacity())
 				return 0;
 			return buffer.getInt(offset + 3 + index * 4);
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("Pointer", pointer(), byteAt(hdrOff + 2));
-			int recorded = recordedCount();
-			for (int i = 0; i < capacity(); i++) {
-				int idx = i;
-				String label = i < recorded ? "Recorded " + i : "Empty " + i;
-				h.field(label, formatIp4(address(idx)), intAt(hdrOff + 3 + i * 4));
-			}
 		}
 	}
 
@@ -398,34 +330,6 @@ public final class Ip4Options extends BoundView
 				return 0;
 			return buffer.getInt(offset + 4 + index * 8);
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("Pointer", pointer(), byteAt(hdrOff + 2));
-			h.expandField("Overflow/Flag", buffer.get(offset + 3) & 0xFF,
-					String.format("oflw=%d, flag=%d", overflow(), flag()),
-					byteAt(hdrOff + 3), f -> {
-						f.field("Overflow", overflow(), bitsAt((hdrOff + 3) * 8L, 4));
-						f.field("Flag", flag(), tsFlagName(flag()), bitsAt((hdrOff + 3) * 8L + 4, 4));
-					});
-
-			int flg = flag();
-			for (int i = 0; i < entryCount(); i++) {
-				int idx = i;
-				if (flg == TS_FLAG_TSONLY) {
-					h.field("Timestamp " + i, timestamp(idx), intAt(hdrOff + 4 + i * 4));
-				} else {
-					int entryOff = hdrOff + 4 + i * 8;
-					h.section("Entry " + i, "", s -> {
-						s.field("Address", formatIp4(address(idx)), intAt(entryOff));
-						s.field("Timestamp", timestamp(idx), intAt(entryOff + 4));
-					});
-				}
-			}
-		}
 	}
 
 	public final class RouterAlert extends Ip4Option {
@@ -437,15 +341,6 @@ public final class Ip4Options extends BoundView
 
 		public int value() {
 			return isPresent() ? buffer.getShort(offset + 2) & 0xFFFF : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			String valueStr = value() == ROUTER_ALERT_EXAMINE ? "Examine packet" : String.valueOf(value());
-			h.field("Value", value(), valueStr, shortAt(hdrOff + 2));
 		}
 	}
 
@@ -468,17 +363,6 @@ public final class Ip4Options extends BoundView
 
 		public int originator() {
 			return isPresent() ? buffer.getInt(offset + 8) : 0;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("HEADER_ID", id(), shortAt(hdrOff + 2));
-			h.field("Outbound Hops", outboundHops(), shortAt(hdrOff + 4));
-			h.field("Return Hops", returnHops(), shortAt(hdrOff + 6));
-			h.field("Originator", formatIp4(originator()), intAt(hdrOff + 8));
 		}
 	}
 
@@ -503,20 +387,6 @@ public final class Ip4Options extends BoundView
 			return isPresent() ? buffer.getInt(offset + 4) >>> 2 : -1;
 		}
 
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.expandField("Func/Rate", buffer.get(offset + 2) & 0xFF,
-					String.format("Func=%d, Rate=%d", function(), rate()),
-					byteAt(hdrOff + 2), f -> {
-						f.field("Function", function(), bitsAt((hdrOff + 2) * 8L, 4));
-						f.field("Rate", rate(), bitsAt((hdrOff + 2) * 8L + 4, 4));
-					});
-			h.field("TTL", ttl(), byteAt(hdrOff + 3));
-			h.fieldHex("Nonce", nonce(), 8, intAt(hdrOff + 4));
-		}
 	}
 
 	@Deprecated
@@ -525,16 +395,9 @@ public final class Ip4Options extends BoundView
 			super(SID);
 		}
 
+		@Deprecated
 		public int streamId() {
 			return isPresent() ? buffer.getShort(offset + 2) & 0xFFFF : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("Stream HEADER_ID", streamId(), shortAt(hdrOff + 2));
 		}
 	}
 
@@ -546,14 +409,6 @@ public final class Ip4Options extends BoundView
 		public int mtu() {
 			return isPresent() ? buffer.getShort(offset + 2) & 0xFFFF : -1;
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("MTU", mtu(), shortAt(hdrOff + 2));
-		}
 	}
 
 	public final class MtuReply extends Ip4Option {
@@ -563,14 +418,6 @@ public final class Ip4Options extends BoundView
 
 		public int mtu() {
 			return isPresent() ? buffer.getShort(offset + 2) & 0xFFFF : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP4_HEADER_MIN + offset;
-			buildTypeField(h, hdrOff);
-			h.field("Length", length, byteAt(hdrOff + 1));
-			h.field("MTU", mtu(), shortAt(hdrOff + 2));
 		}
 	}
 
@@ -967,17 +814,6 @@ public final class Ip4Options extends BoundView
 		};
 	}
 
-	private void buildTypeField(DetailBuilder.HeaderBuilder h, int hdrOff) {
-		int type = buffer.get(hdrOff - IP4_HEADER_MIN) & 0xFF;
-		h.expandField("Type", type, formatType(type), byteAt(hdrOff), f -> {
-			f.field("Copied", (type & TYPE_COPIED_MASK) != 0 ? 1 : 0,
-					(type & TYPE_COPIED_MASK) != 0 ? "Yes" : "No", bitsAt(hdrOff * 8L, 1));
-			f.field("Class", (type & TYPE_CLASS_MASK) >> 5,
-					className((type & TYPE_CLASS_MASK) >> 5), bitsAt(hdrOff * 8L + 1, 2));
-			f.field("Number", type & TYPE_NUMBER_MASK, bitsAt(hdrOff * 8L + 3, 5));
-		});
-	}
-
 	private static String formatType(int type) {
 		return String.format("0x%02X (copy=%d, class=%d, num=%d)",
 				type,
@@ -992,22 +828,5 @@ public final class Ip4Options extends BoundView
 				(addr >> 16) & 0xFF,
 				(addr >> 8) & 0xFF,
 				addr & 0xFF);
-	}
-
-	@Override
-	public void buildDetail(DetailBuilder b) {
-		ensureParsed();
-		if (chainLength == 0)
-			return;
-
-		for (Ip4Option opt : this) {
-			int hdrOff = IP4_HEADER_MIN + opt.offset;
-			b.header("IPv4 Option - " + opt.optionName(), "IPv4:Opt", opt.type, hdrOff, opt.length, opt::buildDetail);
-		}
-	}
-
-	@Override
-	public String toString() {
-		return new TextRenderer().render(getDetail());
 	}
 }

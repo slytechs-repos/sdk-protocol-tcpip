@@ -17,14 +17,11 @@
  */
 package com.slytechs.sdk.protocol.tcpip.udp;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
 import com.slytechs.sdk.protocol.core.checksum.Checksums;
 import com.slytechs.sdk.protocol.core.header.FixedHeader;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
@@ -75,7 +72,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * @see <a href="https://tools.ietf.org/html/rfc768">RFC 768 - User Datagram
  *      Protocol</a>
  */
-public class Udp extends FixedHeader implements Detailable {
+public class Udp extends FixedHeader {
 
 	/** Protocol HEADER_ID for UDP. */
 	public static final int HEADER_ID = ProtocolIds.UDP;
@@ -83,6 +80,19 @@ public class Udp extends FixedHeader implements Detailable {
 	/** UDP header length in bytes (fixed size). */
 	public static final int HEADER_LENGTH = 8;
 
+	// @formatter:off
+	private static final String SUMMARY = "User Datagram Protocol, Src Port: {udp.srcport}, Dst Port: {udp.dstport}";
+
+	private static final DataEmitter<Udp> UDP_EMITTER;
+	static {
+		UDP_EMITTER = new DataEmitter<>();
+		UDP_EMITTER.section(SUMMARY, sec -> sec
+				.field("Source Port", Udp::srcPort, "udp.srcport")
+				.field("Destination Port", Udp::dstPort, "udp.dstport")
+				.field("Length", Udp::length, "udp.length")
+				.field("Checksum", "{udp.checksum:0x%04X}", Udp::checksum, "udp.checksum"));
+	}
+	// @formatter:on
 	/** UDP header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
 			U16_BE.withName("hdr_src_port"),
@@ -260,28 +270,10 @@ public class Udp extends FixedHeader implements Detailable {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
 	 */
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-
-		b.header("User Datagram Protocol", "UDP", HEADER_ID, off, HEADER_LENGTH, h -> {
-			h.summaryf("%d → %d Len=%d",
-					srcPort(), dstPort(), length());
-
-			h.field("Source Port", srcPort(), shortAt(off));
-			h.field("Destination Port", dstPort(), shortAt(off + 2));
-			h.field("Length", length(), shortAt(off + 4));
-			h.fieldHex("Checksum", checksum(), 4, shortAt(off + 6));
-		});
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
+	public DataEmitter<?> dataEmitter() {
+		return UDP_EMITTER;
 	}
 }

@@ -40,8 +40,9 @@ public enum Tcpip implements ProtocolId {
 	private final int id;
 
 	public static Tcpip valueOf(int id) {
+		int descriptorId = ProtocolIds.descriptorId(id);
 		for (var c : values())
-			if (c.id == id)
+			if (ProtocolIds.descriptorId(c.id) == descriptorId)
 				return c;
 
 		return null;

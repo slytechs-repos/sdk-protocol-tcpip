@@ -17,14 +17,12 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ethernet;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.Detail;
 import com.slytechs.sdk.protocol.core.address.MacAddress;
 import com.slytechs.sdk.protocol.core.address.MacAddressMemory;
 import com.slytechs.sdk.protocol.core.checksum.Checksums;
@@ -92,7 +90,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * @see MacAddress
  * @see EtherTypeResolver
  */
-public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implements Detailable {
+public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> {
 
 	/** Protocol HEADER_ID for Ethernet. */
 	public static final int HEADER_ID = ProtocolIds.ETHERNET;
@@ -129,6 +127,16 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 
 	/** EtherTypes for MPLS multicast. */
 	public static final int ETHERTYPE_MPLS_MCAST = 0x8848;
+
+	private static final DataEmitter<Ethernet> EMITTER = new DataEmitter<>();
+	static {
+		EMITTER.section("Ethernet II, Src: {eth.src}, Dst: {eth.dst}", sec -> sec
+				.field("Destination", Ethernet::dst, "eth.dst")
+				.field("Source", Ethernet::src, "eth.src")
+				.field("Type", eth -> EtherTypeResolver.resolveOrHex(eth.etherType())
+						+ " (0x" + String.format("%04x", eth.etherType()) + ")",
+						"eth.type"));
+	}
 
 	/** Ethernet header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
@@ -267,9 +275,9 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	 * Returns the EtherTypes/Length field (16 bits).
 	 * 
 	 * <p>
-	 * For Ethernet II frames (value >= 1536), this is the EtherTypes identifying the
-	 * payload protocol. For IEEE 802.3 frames (value <= 1500), this is the payload
-	 * length.
+	 * For Ethernet II frames (value >= 1536), this is the EtherTypes identifying
+	 * the payload protocol. For IEEE 802.3 frames (value <= 1500), this is the
+	 * payload length.
 	 * </p>
 	 *
 	 * @return the EtherTypes or length value
@@ -447,38 +455,20 @@ public final class Ethernet extends ExtensibleHeader<Eth8023Extensions> implemen
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
+	public String toString() {
+		return toText().toString();
+	}
 
-		b.header("Ethernet", "ETH", HEADER_ID, off, HEADER_LENGTH, h -> {
-			h.summaryf("%s → %s %s",
-					src(), dst(),
-					isEthernetII()
-							? EtherTypeResolver.resolveAbbrOrHex(etherType())
-							: "IEEE 802.3 Len=" + etherType());
-
-			h.field("Destination", dst().toString(), bits(off, 6));
-			h.field("Source", src().toString(), bits(off + 6, 6));
-
-			if (isEthernetII()) {
-				h.fieldHex("Type", etherType(), 4,
-						EtherTypeResolver.resolveOrHex(etherType()),
-						shortAt(off + 12));
-			} else {
-				h.field("Length", etherType(), shortAt(off + 12));
-			}
-		});
-
-		if (hasExtensions()) {
-			extensions().buildDetail(b);
-		}
+	@Override
+	public String toString(Detail detail) {
+		return toText(detail).toString();
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
 	 */
 	@Override
-	public String toString() {
-		return toDetailString();
+	public DataEmitter<?> dataEmitter() {
+		return EMITTER;
 	}
 }

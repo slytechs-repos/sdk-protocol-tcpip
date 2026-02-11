@@ -17,16 +17,13 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ethernet;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
-import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.Textual;
 import com.slytechs.sdk.protocol.core.header.HeaderExtension;
 import com.slytechs.sdk.protocol.core.header.HeaderExtensions;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
@@ -44,8 +41,9 @@ import com.slytechs.sdk.protocol.core.id.ProtocolIds;
  * @since 1.0
  */
 public final class Eth8023Extensions extends BoundView
-		implements HeaderExtensions<Eth8023Extensions.Eth8023Extension>, Detailable,
-		Iterable<Eth8023Extensions.Eth8023Extension> {
+		implements HeaderExtensions<Eth8023Extensions.Eth8023Extension>,
+		Iterable<Eth8023Extensions.Eth8023Extension>,
+		Textual {
 
 	public static final int LLC = 1;
 	public static final int SNAP = 2;
@@ -76,6 +74,49 @@ public final class Eth8023Extensions extends BoundView
 
 	private static final int ETH_HEADER_LENGTH = 14;
 	private static final int MAX_EXTENSIONS = 2;
+
+	// @formatter:off
+	private static final DataEmitter<Eth8023Extensions> ETH8023_EMITTER;
+	static {
+		ETH8023_EMITTER = new DataEmitter<>();
+
+		ETH8023_EMITTER.section("IEEE 802.3 Extensions", sec -> sec
+				.delegate((e, exts, c) -> {
+					for (Eth8023Extensions.Eth8023Extension ext : exts) {
+						if (ext instanceof Eth8023Extensions.Llc llc) {
+							e.summary("Logical Link Control");
+							e.push();
+							e.field("DSAP", "%s (0x%02X)".formatted(dsapName(llc.dsap()), llc.dsap()));
+							e.field("SSAP", "%s (0x%02X)".formatted(ssapName(llc.ssap()), llc.ssap()));
+							String ctrlType = llc.isUnnumbered() ? "Unnumbered"
+									: llc.isSupervisory() ? "Supervisory" : "Information";
+							e.field("Control", "%s (%s) (0x%02X)".formatted(
+									ctrlType, controlName(llc.control()), llc.control()));
+							e.pop();
+
+						} else if (ext instanceof Eth8023Extensions.Snap snap) {
+							e.summary("Sub-Network Access Protocol");
+							e.push();
+							e.field("OUI", "0x%06X".formatted(snap.oui()));
+							String oui = ouiName(snap.oui());
+							if (oui != null)
+								e.field("Organization", oui);
+							e.field("Protocol ID", "%s (0x%04X)".formatted(
+									EtherTypeResolver.resolveOrHex(snap.protocolId()),
+									snap.protocolId()));
+							e.pop();
+
+						} else {
+							e.summary("802.3 Extension - %s".formatted(ext.extensionName()));
+							e.push();
+							e.field("Length", String.valueOf(ext.extensionLength()));
+							e.pop();
+						}
+					}
+					return e;
+				}));
+	}
+	// @formatter:on
 
 	private long bitmask;
 
@@ -118,12 +159,6 @@ public final class Eth8023Extensions extends BoundView
 		@Override
 		public String extensionName() {
 			return Eth8023Extensions.extensionName(id);
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = ETH_HEADER_LENGTH + offset;
-			h.field("Data", "[" + length + " bytes]", bits(hdrOff, length));
 		}
 	}
 
@@ -196,21 +231,6 @@ public final class Eth8023Extensions extends BoundView
 			return isPresent() && dsap() == DSAP_NETBIOS && ssap() == SSAP_NETBIOS;
 		}
 
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = ETH_HEADER_LENGTH + offset;
-			h.expandField("DSAP", dsap(), dsapName(dsap()), byteAt(hdrOff), f -> {
-				f.field("SAP", dsap() & 0xFE, bitsAt(hdrOff * 8L, 7));
-				f.field("I/G", dsapGroup() ? 1 : 0, dsapGroup() ? "Group" : "Individual", bitsAt(hdrOff * 8L + 7, 1));
-			});
-			h.expandField("SSAP", ssap(), ssapName(ssap()), byteAt(hdrOff + 1), f -> {
-				f.field("SAP", ssap() & 0xFE, bitsAt((hdrOff + 1) * 8L, 7));
-				f.field("C/R", ssapResponse() ? 1 : 0, ssapResponse() ? "Response" : "Command", bitsAt((hdrOff + 1) * 8L
-						+ 7, 1));
-			});
-			String ctrlType = isUnnumbered() ? "Unnumbered" : (isSupervisory() ? "Supervisory" : "Information");
-			h.field("Control", control(), ctrlType + " (" + controlName(control()) + ")", byteAt(hdrOff + 2));
-		}
 	}
 
 	public final class Snap extends Eth8023Extension {
@@ -242,21 +262,6 @@ public final class Eth8023Extensions extends BoundView
 
 		public boolean isApple() {
 			return isPresent() && oui() == OUI_APPLE;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = ETH_HEADER_LENGTH + offset;
-			h.fieldHex("OUI", oui(), 6, bits(hdrOff, 3));
-			String ouiName = ouiName(oui());
-			if (ouiName != null) {
-				h.field("Organization", ouiName);
-			}
-			h.fieldHex("Protocol HEADER_ID", protocolId(), 4, shortAt(hdrOff + 3));
-			String protoName = protocolName(protocolId());
-			if (protoName != null) {
-				h.field("Protocol", protoName);
-			}
 		}
 	}
 
@@ -473,19 +478,15 @@ public final class Eth8023Extensions extends BoundView
 	}
 
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		ensureParsed();
-		if (chainLength == 0)
-			return;
-
-		for (Eth8023Extension ext : this) {
-			int hdrOff = ETH_HEADER_LENGTH + ext.offset;
-			b.header("802.3 Extension - " + ext.extensionName(), "802.2", ext.id, hdrOff, ext.length, ext::buildDetail);
-		}
+	public String toString() {
+		return toText().toString();
 	}
 
+	/**
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
+	 */
 	@Override
-	public String toString() {
-		return new TextRenderer().render(getDetail());
+	public DataEmitter<?> dataEmitter() {
+		return ETH8023_EMITTER;
 	}
 }

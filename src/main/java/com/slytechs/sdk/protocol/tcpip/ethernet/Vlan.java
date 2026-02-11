@@ -17,13 +17,13 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ethernet;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
+import java.util.Map;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
+import com.slytechs.sdk.common.text.Textual;
+import com.slytechs.sdk.common.text.format.Macro;
 import com.slytechs.sdk.protocol.core.header.FixedHeader;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
@@ -33,13 +33,14 @@ import static java.lang.foreign.MemoryLayout.*;
  * IEEE 802.1Q VLAN tag header.
  * 
  * <p>
- * VLAN (Virtual Local Area Network) tagging allows a single physical network
- * to be partitioned into multiple logical networks. The 802.1Q tag is inserted
+ * VLAN (Virtual Local Area Network) tagging allows a single physical network to
+ * be partitioned into multiple logical networks. The 802.1Q tag is inserted
  * into Ethernet frames between the source MAC address and the original
  * EtherTypes/Length field.
  * </p>
  * 
  * <h2>Header Format</h2>
+ * 
  * <pre>
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -50,7 +51,8 @@ import static java.lang.foreign.MemoryLayout.*;
  * 
  * <h2>Tag Control Information (TCI)</h2>
  * <ul>
- * <li><b>PCP</b> (3 bits) - Priority Code Point, IEEE 802.1p class of service</li>
+ * <li><b>PCP</b> (3 bits) - Priority Code Point, IEEE 802.1p class of
+ * service</li>
  * <li><b>DEI</b> (1 bit) - Drop Eligible Indicator (formerly CFI)</li>
  * <li><b>VID</b> (12 bits) - VLAN Identifier (0-4095)</li>
  * </ul>
@@ -81,7 +83,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * @see Ethernet
  * @see EtherTypeResolver
  */
-public class Vlan extends FixedHeader implements Detailable {
+public class Vlan extends FixedHeader implements Textual {
 
 	/** Protocol HEADER_ID for VLAN. */
 	public static final int ID = ProtocolIds.VLAN;
@@ -110,11 +112,36 @@ public class Vlan extends FixedHeader implements Detailable {
 	/** Maximum valid VID. */
 	public static final int VID_MAX = 4094;
 
+	// @formatter:off
+	private static final String SUMMARY = "802.1Q Virtual LAN, PRI: {vlan.priority}, DEI: {vlan.dei}, ID: {vlan.id}";
+
+	private static final DataEmitter<Vlan> VLAN_EMITTER;
+	static {
+		VLAN_EMITTER = new DataEmitter<>();
+
+		VLAN_EMITTER.macro("vlan.priority.name", Macro.enumLookup(Map.of(
+				0, "Best Effort", 1, "Background", 2, "Excellent Effort",
+				3, "Critical Applications", 4, "Video", 5, "Voice",
+				6, "Internetwork Control", 7, "Network Control")));
+
+		VLAN_EMITTER.section(SUMMARY, sec -> sec
+				.field("Tag Control Information: {vlan.tci:0x%04X}", Vlan::tci, "vlan.tci", tci -> tci
+						.bitfield("{/111. .... .... ..../} = Priority: {@vlan.priority.name} ({>>})",
+								"vlan.priority", 13, 3, Vlan::tci)
+						.bitfield("{/...1 .... .... ..../} = Drop Eligible: {@set}",
+								"vlan.dei", 12, 1, Vlan::tci)
+						.bitfield("{/.... 1111 1111 1111/} = VLAN Identifier: {>>}",
+								"vlan.id", 0, 12, Vlan::tci))
+				.field("Type", vlan -> "%s (0x%04x)".formatted(
+						EtherTypeResolver.resolveOrHex(vlan.etherType()),
+						vlan.etherType()), "vlan.etype"));
+	}
+	// @formatter:on
+
 	/** VLAN header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
 			U16_BE.withName("hdr_tci"),
-			U16_BE.withName("hdr_ethertype")
-	);
+			U16_BE.withName("hdr_ethertype"));
 
 	private static final ShortHandle TCI = new ShortHandle(LAYOUT, "hdr_tci");
 	private static final ShortHandle ETHERTYPE = new ShortHandle(LAYOUT, "hdr_ethertype");
@@ -191,8 +218,8 @@ public class Vlan extends FixedHeader implements Detailable {
 	 * Returns the Drop Eligible Indicator field (1 bit).
 	 * 
 	 * <p>
-	 * Formerly called CFI (Canonical Format Indicator). When set, indicates
-	 * the frame may be dropped during congestion.
+	 * Formerly called CFI (Canonical Format Indicator). When set, indicates the
+	 * frame may be dropped during congestion.
 	 * </p>
 	 *
 	 * @return true if drop eligible
@@ -243,8 +270,8 @@ public class Vlan extends FixedHeader implements Detailable {
 	 * Returns the encapsulated protocol EtherTypes (16 bits).
 	 * 
 	 * <p>
-	 * This is the EtherTypes of the payload following the VLAN tag.
-	 * May be another VLAN tag (QinQ) or an upper-layer protocol.
+	 * This is the EtherTypes of the payload following the VLAN tag. May be another
+	 * VLAN tag (QinQ) or an upper-layer protocol.
 	 * </p>
 	 *
 	 * @return the EtherTypes value
@@ -267,8 +294,8 @@ public class Vlan extends FixedHeader implements Detailable {
 	 * Checks if this is a priority-tagged frame.
 	 * 
 	 * <p>
-	 * Priority-tagged frames have VID 0 and carry only priority information
-	 * without VLAN membership.
+	 * Priority-tagged frames have VID 0 and carry only priority information without
+	 * VLAN membership.
 	 * </p>
 	 *
 	 * @return true if VID is 0
@@ -294,49 +321,23 @@ public class Vlan extends FixedHeader implements Detailable {
 	 */
 	public String pcpToString() {
 		return switch (pcp()) {
-			case 0 -> "Best Effort";
-			case 1 -> "Background";
-			case 2 -> "Excellent Effort";
-			case 3 -> "Critical Applications";
-			case 4 -> "Video";
-			case 5 -> "Voice";
-			case 6 -> "Internetwork Control";
-			case 7 -> "Network Control";
-			default -> "Unknown";
+		case 0 -> "Best Effort";
+		case 1 -> "Background";
+		case 2 -> "Excellent Effort";
+		case 3 -> "Critical Applications";
+		case 4 -> "Video";
+		case 5 -> "Voice";
+		case 6 -> "Internetwork Control";
+		case 7 -> "Network Control";
+		default -> "Unknown";
 		};
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
 	 */
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-
-		b.header("802.1Q Virtual LAN", "VLAN", ID, off, HEADER_LENGTH, h -> {
-			h.summaryf("VID=%d PCP=%d %s",
-					vid(), pcp(),
-					EtherTypeResolver.resolveAbbrOrHex(etherType()));
-
-			h.expandField("TCI", tci(),
-					String.format("PCP=%d, DEI=%d, VID=%d", pcp(), dei() ? 1 : 0, vid()),
-					shortAt(off), f -> {
-						f.field("Priority", pcp(), pcpToString(), bitsAt(off * 8L, 3));
-						f.field("DEI", dei() ? 1 : 0, dei() ? "Eligible" : "Not eligible", bitsAt(off * 8L + 3, 1));
-						f.field("VLAN HEADER_ID", vid(), bitsAt(off * 8L + 4, 12));
-					});
-
-			h.fieldHex("Type", etherType(), 4,
-					EtherTypeResolver.resolve(etherType()),
-					shortAt(off + 2));
-		});
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
+	public DataEmitter<?> dataEmitter() {
+		return VLAN_EMITTER;
 	}
 }

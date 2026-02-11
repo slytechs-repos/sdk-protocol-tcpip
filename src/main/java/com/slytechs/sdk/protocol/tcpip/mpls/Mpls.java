@@ -17,13 +17,10 @@
  */
 package com.slytechs.sdk.protocol.tcpip.mpls;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
 import com.slytechs.sdk.protocol.core.header.FixedHeader;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 
@@ -40,6 +37,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * </p>
  * 
  * <h2>Header Format</h2>
+ * 
  * <pre>
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -72,9 +70,9 @@ import static java.lang.foreign.MemoryLayout.*;
  * 
  * <h2>Label Stacking</h2>
  * <p>
- * Multiple MPLS labels can be stacked. Each label is parsed as a separate
- * Mpls header. Use {@link #isBottomOfStack()} to determine if this is the
- * last label before the payload.
+ * Multiple MPLS labels can be stacked. Each label is parsed as a separate Mpls
+ * header. Use {@link #isBottomOfStack()} to determine if this is the last label
+ * before the payload.
  * </p>
  * 
  * {@snippet :
@@ -85,15 +83,16 @@ import static java.lang.foreign.MemoryLayout.*;
  * System.out.println("TTL: " + mpls.ttl());
  * 
  * if (mpls.isBottomOfStack()) {
- *     System.out.println("Last label in stack");
+ * 	System.out.println("Last label in stack");
  * }
  * }
  *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
- * @see <a href="https://tools.ietf.org/html/rfc3032">RFC 3032 - MPLS Label Stack Encoding</a>
+ * @see <a href="https://tools.ietf.org/html/rfc3032">RFC 3032 - MPLS Label
+ *      Stack Encoding</a>
  */
-public class Mpls extends FixedHeader implements Detailable {
+public class Mpls extends FixedHeader {
 
 	/** Protocol HEADER_ID for MPLS. */
 	public static final int HEADER_ID = ProtocolIds.MPLS;
@@ -136,8 +135,7 @@ public class Mpls extends FixedHeader implements Detailable {
 
 	/** MPLS header memory layout. */
 	public static final MemoryLayout LAYOUT = structLayout(
-			U32_BE.withName("hdr_label_tc_s_ttl")
-	);
+			U32_BE.withName("hdr_label_tc_s_ttl"));
 
 	private static final IntHandle LABEL_ENTRY = new IntHandle(LAYOUT, "hdr_label_tc_s_ttl");
 
@@ -149,6 +147,32 @@ public class Mpls extends FixedHeader implements Detailable {
 	private static final int S_SHIFT = 8;
 	private static final int TTL_MASK = 0x000000FF;
 
+	// @formatter:off
+	private static final String SUMMARY =
+			"Multi-Protocol Label Switching, Label: {mpls.label}, TC: {mpls.tc}, S: {mpls.s}, TTL: {mpls.ttl}";
+
+	private static final DataEmitter<Mpls> MPLS_EMITTER;
+	static {
+		MPLS_EMITTER = new DataEmitter<>();
+
+		MPLS_EMITTER.section(SUMMARY, sec -> sec
+				.field("Label Stack Entry: {mpls.entry:0x%08X}", Mpls::labelEntry, "mpls.entry", lse -> lse
+						.bitfield("{/1111 1111 1111 1111 1111 .... .... ..../} = Label: {>>}",
+								"mpls.label", 12, 20, Mpls::labelEntry)
+						.delegate((e, mpls, c) -> {
+							String desc = mpls.labelToString();
+							if (desc != null)
+								e.meta("Label", desc);
+							return e;
+						})
+						.bitfield("{/.... .... .... .... .... 111. .... ..../} = Traffic Class: {>>}",
+								"mpls.tc", 9, 3, Mpls::labelEntry)
+						.bitfield("{/.... .... .... .... .... ...1 .... ..../} = Bottom of Stack: {@set}",
+								"mpls.s", 8, 1, Mpls::labelEntry)
+						.bitfield("{/.... .... .... .... .... .... 1111 1111/} = Time to Live: {>>}",
+								"mpls.ttl", 0, 8, Mpls::labelEntry)));
+	}
+	// @formatter:on
 	/**
 	 * Constructs a new MPLS header.
 	 */
@@ -178,8 +202,8 @@ public class Mpls extends FixedHeader implements Detailable {
 	 * Returns the label field (20 bits).
 	 * 
 	 * <p>
-	 * The label value is used by MPLS routers to make forwarding decisions.
-	 * Labels 0-15 are reserved for special purposes.
+	 * The label value is used by MPLS routers to make forwarding decisions. Labels
+	 * 0-15 are reserved for special purposes.
 	 * </p>
 	 *
 	 * @return the label value (0-1048575)
@@ -204,8 +228,8 @@ public class Mpls extends FixedHeader implements Detailable {
 	 * Returns the Traffic Class field (3 bits).
 	 * 
 	 * <p>
-	 * Formerly called EXP (Experimental). Used for QoS and ECN signaling.
-	 * The TC field typically maps to IP DSCP/ECN values.
+	 * Formerly called EXP (Experimental). Used for QoS and ECN signaling. The TC
+	 * field typically maps to IP DSCP/ECN values.
 	 * </p>
 	 *
 	 * @return the traffic class value (0-7)
@@ -300,8 +324,8 @@ public class Mpls extends FixedHeader implements Detailable {
 	 * Returns the Time To Live field (8 bits).
 	 * 
 	 * <p>
-	 * Decremented by each LSR (Label Switching Router). The packet is
-	 * discarded when TTL reaches zero, preventing routing loops.
+	 * Decremented by each LSR (Label Switching Router). The packet is discarded
+	 * when TTL reaches zero, preventing routing loops.
 	 * </p>
 	 *
 	 * @return the TTL value (0-255)
@@ -325,8 +349,8 @@ public class Mpls extends FixedHeader implements Detailable {
 	 * Checks if this label is a reserved label (0-15).
 	 * 
 	 * <p>
-	 * Reserved labels have special meanings defined by IANA and should
-	 * not be used for normal LSP signaling.
+	 * Reserved labels have special meanings defined by IANA and should not be used
+	 * for normal LSP signaling.
 	 * </p>
 	 *
 	 * @return true if label value is 0-15
@@ -339,8 +363,8 @@ public class Mpls extends FixedHeader implements Detailable {
 	 * Checks if this is an Explicit NULL label (IPv4 or IPv6).
 	 * 
 	 * <p>
-	 * Explicit NULL labels indicate the payload type and signal that the
-	 * label should be popped before forwarding.
+	 * Explicit NULL labels indicate the payload type and signal that the label
+	 * should be popped before forwarding.
 	 * </p>
 	 *
 	 * @return true if label is 0 (IPv4) or 2 (IPv6)
@@ -354,8 +378,8 @@ public class Mpls extends FixedHeader implements Detailable {
 	 * Checks if this is a Router Alert label.
 	 * 
 	 * <p>
-	 * Router Alert labels cause the packet to be delivered to the local
-	 * control plane for processing.
+	 * Router Alert labels cause the packet to be delivered to the local control
+	 * plane for processing.
 	 * </p>
 	 *
 	 * @return true if label is 1
@@ -371,51 +395,23 @@ public class Mpls extends FixedHeader implements Detailable {
 	 */
 	public String labelToString() {
 		return switch (label()) {
-			case LABEL_IPV4_EXPLICIT_NULL -> "IPv4 Explicit NULL";
-			case LABEL_ROUTER_ALERT -> "Router Alert";
-			case LABEL_IPV6_EXPLICIT_NULL -> "IPv6 Explicit NULL";
-			case LABEL_IMPLICIT_NULL -> "Implicit NULL";
-			case LABEL_ELI -> "Entropy Label Indicator";
-			case LABEL_GAL -> "Generic Associated Channel";
-			case LABEL_OAM_ALERT -> "OAM Alert";
-			case LABEL_EXTENSION -> "Extension Label";
-			default -> label() <= LABEL_RESERVED_MAX ? "Reserved" : null;
+		case LABEL_IPV4_EXPLICIT_NULL -> "IPv4 Explicit NULL";
+		case LABEL_ROUTER_ALERT -> "Router Alert";
+		case LABEL_IPV6_EXPLICIT_NULL -> "IPv6 Explicit NULL";
+		case LABEL_IMPLICIT_NULL -> "Implicit NULL";
+		case LABEL_ELI -> "Entropy Label Indicator";
+		case LABEL_GAL -> "Generic Associated Channel";
+		case LABEL_OAM_ALERT -> "OAM Alert";
+		case LABEL_EXTENSION -> "Extension Label";
+		default -> label() <= LABEL_RESERVED_MAX ? "Reserved" : null;
 		};
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
 	 */
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-		String labelDesc = labelToString();
-
-		b.header("Multi-Protocol Label Switching", "MPLS", HEADER_ID, off, HEADER_LENGTH, h -> {
-			h.summaryf("Label=%d TC=%d S=%d TTL=%d%s",
-					label(), tc(), s(), ttl(),
-					labelDesc != null ? " [" + labelDesc + "]" : "");
-
-			h.expandField("Label Stack Entry", labelEntry(),
-					String.format("Label=%d, TC=%d, S=%d, TTL=%d", label(), tc(), s(), ttl()),
-					intAt(off), f -> {
-						if (labelDesc != null) {
-							f.field("Label", label(), labelDesc, bitsAt(off * 8L, 20));
-						} else {
-							f.field("Label", label(), bitsAt(off * 8L, 20));
-						}
-						f.field("Traffic Class", tc(), bitsAt(off * 8L + 20, 3));
-						f.field("Bottom of Stack", s(), isBottomOfStack() ? "Yes" : "No", bitsAt(off * 8L + 23, 1));
-						f.field("TTL", ttl(), bitsAt(off * 8L + 24, 8));
-					});
-		});
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
+	public DataEmitter<?> dataEmitter() {
+		return MPLS_EMITTER;
 	}
 }

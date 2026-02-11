@@ -17,13 +17,10 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ipsec;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.ByteHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
 import com.slytechs.sdk.protocol.core.header.FixedHeader;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 import com.slytechs.sdk.protocol.tcpip.ip.IpProtocolResolver;
@@ -73,7 +70,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * @author Sly Technologies Inc.
  * @see Esp
  */
-public class EspTrailer extends FixedHeader implements Detailable {
+public class EspTrailer extends FixedHeader {
 
 	/** Protocol HEADER_ID for IPsec ESP Trailer. */
 	public static final int HEADER_ID = ProtocolIds.ESP_TRAILER;
@@ -92,6 +89,26 @@ public class EspTrailer extends FixedHeader implements Detailable {
 	private static final ByteHandle PAD_LENGTH = new ByteHandle(LAYOUT, "trl_pad_length");
 	private static final ByteHandle NEXT_HEADER = new ByteHandle(LAYOUT, "trl_next_header");
 
+	// @formatter:off
+	private static final String SUMMARY =
+			"IPsec ESP Trailer (Decrypted), PadLen: {espt.padlen}, Next: {espt.nxt}";
+
+	private static final DataEmitter<EspTrailer> ESP_TRAILER_EMITTER;
+	static {
+		ESP_TRAILER_EMITTER = new DataEmitter<>();
+
+		ESP_TRAILER_EMITTER.section(SUMMARY, sec -> sec
+				.delegate((e, t, c) -> {
+					if (t.padLength() > 0)
+						e.field("Padding", "%d bytes".formatted(t.padLength()));
+					return e;
+				})
+				.field("Pad Length", EspTrailer::padLength, "espt.padlen")
+				.field("Next Header", t -> "%s (%d)".formatted(
+						IpProtocolResolver.resolveOrNumber(t.nextHeader()),
+						t.nextHeader()), "espt.nxt"));
+	}
+	// @formatter:on
 	/**
 	 * Constructs a new IPsec ESP Trailer.
 	 */
@@ -157,32 +174,10 @@ public class EspTrailer extends FixedHeader implements Detailable {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
 	 */
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-
-		b.header("IPsec ESP Trailer (Decrypted)", "Trailer", HEADER_ID, off, MIN_TRAILER_LENGTH, h -> {
-			h.summaryf("PadLen=%d → %s",
-					padLength(),
-					IpProtocolResolver.resolveAbbrOrNumber(nextHeader()));
-
-			if (padLength() > 0) {
-				h.field("Padding", padLength() + " bytes", bits(off - padLength(), padLength()));
-			}
-			h.field("Pad Length", padLength(), byteAt(off));
-			h.field("Next Header", nextHeader(),
-					IpProtocolResolver.resolveOrNumber(nextHeader()),
-					byteAt(off + 1));
-		});
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
+	public DataEmitter<?> dataEmitter() {
+		return ESP_TRAILER_EMITTER;
 	}
 }

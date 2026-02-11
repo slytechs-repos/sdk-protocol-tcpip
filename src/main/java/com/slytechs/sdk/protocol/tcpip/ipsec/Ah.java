@@ -17,17 +17,14 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ipsec;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
 import com.slytechs.sdk.common.memory.MemoryHandle.ByteHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.IntHandle;
 import com.slytechs.sdk.common.memory.MemoryHandle.ShortHandle;
+import com.slytechs.sdk.common.text.DataEmitter;
 import com.slytechs.sdk.protocol.core.header.FixedHeader;
 import com.slytechs.sdk.protocol.core.id.ProtocolIds;
 import com.slytechs.sdk.protocol.tcpip.ip.IpProtocolResolver;
@@ -100,7 +97,7 @@ import static java.lang.foreign.MemoryLayout.*;
  * @see <a href="https://tools.ietf.org/html/rfc4302">RFC 4302 - IP
  *      Authentication Header</a>
  */
-public class Ah extends FixedHeader implements Detailable {
+public class Ah extends FixedHeader {
 
 	/** Protocol HEADER_ID for IPsec AH. */
 	public static final int HEADER_ID = ProtocolIds.AH;
@@ -121,6 +118,32 @@ public class Ah extends FixedHeader implements Detailable {
 	private static final ShortHandle RESERVED = new ShortHandle(LAYOUT, "hdr_reserved");
 	private static final IntHandle SPI = new IntHandle(LAYOUT, "hdr_spi");
 	private static final IntHandle SEQUENCE = new IntHandle(LAYOUT, "hdr_sequence");
+
+	// @formatter:off
+	private static final String SUMMARY =
+			"IPsec Authentication Header, SPI: {ah.spi:0x%08X}, Seq: {ah.seq}";
+
+	private static final DataEmitter<Ah> AH_EMITTER;
+	static {
+		AH_EMITTER = new DataEmitter<>();
+
+		AH_EMITTER.section(SUMMARY, sec -> sec
+				.field("Next Header", ah -> "%s (%d)".formatted(
+						IpProtocolResolver.resolveOrNumber(ah.nextHeader()),
+						ah.nextHeader()), "ah.nxt")
+				.field("Payload Length", ah -> "%d (%d bytes)".formatted(
+						ah.payloadLen(), ah.headerLength()), "ah.len")
+				.field("Reserved", "{ah.reserved:0x%04X}", Ah::reserved, "ah.reserved")
+				.field("Security Parameters Index", "{ah.spi:0x%08X}", Ah::spi, "ah.spi")
+				.field("Sequence Number", Ah::sequenceNumberUnsigned, "ah.seq")
+				.delegate((e, ah, c) -> {
+					if (ah.hasIcv())
+						e.field("Integrity Check Value", "%s (%d bytes)".formatted(
+								ah.icvAsHex(), ah.icvLength()));
+					return e;
+				}));
+	}
+	// @formatter:on
 
 	/**
 	 * Constructs a new IPsec AH header.
@@ -314,7 +337,7 @@ public class Ah extends FixedHeader implements Detailable {
 		if (len <= 0) {
 			return new byte[0];
 		}
-		
+
 		MemorySegment mseg = segment();
 		long start = start() + MIN_HEADER_LENGTH;
 		byte[] icv = new byte[len];
@@ -351,41 +374,10 @@ public class Ah extends FixedHeader implements Detailable {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @see com.slytechs.sdk.common.text.Textual#dataEmitter()
 	 */
 	@Override
-	public void buildDetail(DetailBuilder b) {
-		int off = (int) headerOffset();
-
-		b.header("IPsec Authentication Header", "AH", HEADER_ID, off, (int) headerLength(), h -> {
-			h.summaryf("SPI=%s Seq=%d → %s",
-					Ipsec.spiAsHex(spi()),
-					sequenceNumberUnsigned(),
-					IpProtocolResolver.resolveAbbrOrNumber(nextHeader()));
-
-			h.field("Next Header", nextHeader(),
-					IpProtocolResolver.resolveOrNumber(nextHeader()),
-					byteAt(off));
-			h.field("Payload Length", payloadLen(),
-					headerLength() + " bytes",
-					byteAt(off + 1));
-			h.fieldHex("Reserved", reserved(), 4, shortAt(off + 2));
-			h.fieldHex("SPI", spi(), 8, intAt(off + 4));
-			h.field("Sequence Number", sequenceNumberUnsigned(), intAt(off + 8));
-
-			if (hasIcv()) {
-				h.field("ICV", icvAsHex(),
-						icvLength() + " bytes",
-						bits(off + 12, icvLength()));
-			}
-		});
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String toString() {
-		return toDetailString();
+	public DataEmitter<?> dataEmitter() {
+		return AH_EMITTER;
 	}
 }

@@ -17,14 +17,9 @@
  */
 package com.slytechs.sdk.protocol.tcpip.ip;
 
-import static com.slytechs.sdk.common.detail.DetailBuilder.*;
-
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import com.slytechs.sdk.common.detail.DetailBuilder;
-import com.slytechs.sdk.common.detail.Detailable;
-import com.slytechs.sdk.common.detail.render.TextRenderer;
 import com.slytechs.sdk.common.memory.BoundView;
 import com.slytechs.sdk.common.memory.MemoryBuffer;
 import com.slytechs.sdk.protocol.core.header.HeaderExtension;
@@ -40,7 +35,7 @@ import com.slytechs.sdk.protocol.core.id.ProtocolIds;
  * @since 1.0
  */
 public final class Ip6Extensions extends BoundView
-		implements HeaderExtensions<Ip6Extensions.Ip6Extension>, Detailable,
+		implements HeaderExtensions<Ip6Extensions.Ip6Extension>,
 		Iterable<Ip6Extensions.Ip6Extension> {
 
 	public static final int HOP_BY_HOP = 0;
@@ -148,16 +143,6 @@ public final class Ip6Extensions extends BoundView
 		public String extensionName() {
 			return Ip6Extensions.extensionName(id);
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Length", buffer.get(offset + 1) & 0xFF, byteAt(hdrOff + 1));
-			if (length > 2) {
-				h.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-			}
-		}
 	}
 
 	public final class HopByHop extends Ip6Extension {
@@ -176,15 +161,6 @@ public final class Ip6Extensions extends BoundView
 			return len >= 0 ? (len + 1) * 8 : -1;
 		}
 
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Length", headerLength(), headerLengthBytes() + " bytes", byteAt(hdrOff + 1));
-			if (length > 2) {
-				h.field("Options", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-			}
-		}
 	}
 
 	public final class Routing extends Ip6Extension {
@@ -221,21 +197,6 @@ public final class Ip6Extensions extends BoundView
 				addr[i] = buffer.get(offset + 8 + index * 16 + i);
 			}
 			return addr;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Length", headerLength(), headerLengthBytes() + " bytes", byteAt(hdrOff + 1));
-			h.field("Routing Type", routingType(), routingTypeName(routingType()), byteAt(hdrOff + 2));
-			h.field("Segments Left", segmentsLeft(), byteAt(hdrOff + 3));
-			h.field("Reserved", buffer.getInt(offset + 4), intAt(hdrOff + 4));
-
-			for (int i = 0; i < addressCount(); i++) {
-				int idx = i;
-				h.field("Address " + i, formatIp6(address(idx)), bits(hdrOff + 8 + i * 16, 16));
-			}
 		}
 	}
 
@@ -285,23 +246,6 @@ public final class Ip6Extensions extends BoundView
 		public boolean isMiddle() {
 			return isPresent() && fragmentOffset() > 0 && moreFragments();
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Reserved", reserved(), byteAt(hdrOff + 1));
-			h.expandField("Offset/Flags", buffer.getShort(offset + 2) & 0xFFFF,
-					String.format("Offset=%d, M=%d", fragmentOffset(), moreFragments() ? 1 : 0),
-					shortAt(hdrOff + 2), f -> {
-						f.field("Fragment Offset", fragmentOffset(), fragmentOffsetBytes() + " bytes", bitsAt((hdrOff
-								+ 2) * 8L, 13));
-						f.field("Reserved", (buffer.getShort(offset + 2) >> 1) & 0x03, bitsAt((hdrOff + 2) * 8L + 13, 2));
-						f.field("More Fragments", moreFragments() ? 1 : 0, moreFragments() ? "Yes" : "No", bitsAt(
-								(hdrOff + 2) * 8L + 15, 1));
-					});
-			h.fieldHex("Identification", identification(), 8, intAt(hdrOff + 4));
-		}
 	}
 
 	public final class Destination extends Ip6Extension {
@@ -318,16 +262,6 @@ public final class Ip6Extensions extends BoundView
 		public int headerLengthBytes() {
 			int len = headerLength();
 			return len >= 0 ? (len + 1) * 8 : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Length", headerLength(), headerLengthBytes() + " bytes", byteAt(hdrOff + 1));
-			if (length > 2) {
-				h.field("Options", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-			}
 		}
 	}
 
@@ -369,19 +303,6 @@ public final class Ip6Extensions extends BoundView
 			return isPresent() ? offset + 12 : -1;
 		}
 
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Payload Length", payloadLength(), headerLengthBytes() + " bytes", byteAt(hdrOff + 1));
-			h.field("Reserved", reserved(), shortAt(hdrOff + 2));
-			h.fieldHex("SPI", spi(), 8, intAt(hdrOff + 4));
-			h.field("Sequence Number", sequenceNumber() & 0xFFFFFFFFL, intAt(hdrOff + 8));
-			int icvLen = icvLength();
-			if (icvLen > 0) {
-				h.field("ICV", "[" + icvLen + " bytes]", bits(hdrOff + 12, icvLen));
-			}
-		}
 	}
 
 	public final class Esp extends Ip6Extension {
@@ -397,16 +318,6 @@ public final class Ip6Extensions extends BoundView
 
 		public int sequenceNumber() {
 			return isPresent() ? buffer.getInt(offset + 4) : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.fieldHex("SPI", spi(), 8, intAt(hdrOff));
-			h.field("Sequence Number", sequenceNumber() & 0xFFFFFFFFL, intAt(hdrOff + 4));
-			if (length > 8) {
-				h.field("Encrypted Data", "[" + (length - 8) + " bytes]", bits(hdrOff + 8, length - 8));
-			}
 		}
 	}
 
@@ -432,19 +343,6 @@ public final class Ip6Extensions extends BoundView
 		public int checksum() {
 			return isPresent() ? buffer.getShort(offset + 4) & 0xFFFF : -1;
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Header Length", headerLength(), byteAt(hdrOff + 1));
-			h.field("MH Type", mhType(), mobilityTypeName(mhType()), byteAt(hdrOff + 2));
-			h.field("Reserved", reserved(), byteAt(hdrOff + 3));
-			h.fieldHex("Checksum", checksum(), 4, shortAt(hdrOff + 4));
-			if (length > 6) {
-				h.field("Message Data", "[" + (length - 6) + " bytes]", bits(hdrOff + 6, length - 6));
-			}
-		}
 	}
 
 	public final class Hip extends Ip6Extension {
@@ -456,16 +354,6 @@ public final class Ip6Extensions extends BoundView
 
 		public int headerLength() {
 			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Length", headerLength(), byteAt(hdrOff + 1));
-			if (length > 2) {
-				h.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-			}
 		}
 	}
 
@@ -479,16 +367,6 @@ public final class Ip6Extensions extends BoundView
 		public int headerLength() {
 			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
 		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Length", headerLength(), byteAt(hdrOff + 1));
-			if (length > 2) {
-				h.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-			}
-		}
 	}
 
 	public final class Experimental extends Ip6Extension {
@@ -498,16 +376,6 @@ public final class Ip6Extensions extends BoundView
 
 		public int headerLength() {
 			return isPresent() ? buffer.get(offset + 1) & 0xFF : -1;
-		}
-
-		@Override
-		public void buildDetail(DetailBuilder.HeaderBuilder h) {
-			int hdrOff = IP6_HEADER_LENGTH + offset;
-			h.field("Next Header", nextHeader(), Ip6Extensions.extensionName(nextHeader()), byteAt(hdrOff));
-			h.field("Length", headerLength(), byteAt(hdrOff + 1));
-			if (length > 2) {
-				h.field("Data", "[" + (length - 2) + " bytes]", bits(hdrOff + 2, length - 2));
-			}
 		}
 	}
 
@@ -901,23 +769,5 @@ public final class Ip6Extensions extends BoundView
 			sb.append(Integer.toHexString(val));
 		}
 		return sb.toString();
-	}
-
-	@Override
-	public void buildDetail(DetailBuilder b) {
-		ensureParsed();
-		if (chainLength == 0)
-			return;
-
-		for (Ip6Extension ext : this) {
-			int hdrOff = IP6_HEADER_LENGTH + ext.offset;
-			b.header("IPv6 Extension - " + ext.extensionName(), "IPv6:Ext", ext.id, hdrOff, ext.length,
-					ext::buildDetail);
-		}
-	}
-
-	@Override
-	public String toString() {
-		return new TextRenderer().render(getDetail());
 	}
 }
