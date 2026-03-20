@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+import com.slytechs.sdk.protocol.tcpip.ethernet.EthernetTokens;
+import com.slytechs.sdk.protocol.tcpip.ip.IpTokens;
+import com.slytechs.sdk.protocol.tcpip.tcp.TcpTokens;
+
 module com.slytechs.sdk.protocol.tcpip {
 
 	exports com.slytechs.sdk.protocol.tcpip;
@@ -28,5 +32,8 @@ module com.slytechs.sdk.protocol.tcpip {
 
 	provides com.slytechs.sdk.protocol.core.spi.PackProvider
 			with com.slytechs.sdk.protocol.tcpip.impl.TcpipProvider;
+
+	provides com.slytechs.sdk.protocol.core.token.TokenFactory
+			with EthernetTokens, IpTokens, TcpTokens;
 
 }

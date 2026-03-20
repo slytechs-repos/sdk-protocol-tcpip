@@ -13,24 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.slytechs.sdk.protocol.tcpip.tcp;
+package com.slytechs.sdk.protocol.tcpip.ethernet;
+
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
+import com.slytechs.sdk.protocol.core.token.ProtocolToken;
 
 /**
+ * 
+ *
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public enum TcpTokenInfo {
+public class EthernetToken extends ProtocolToken {
 
-	STREAM_SYN,
-	STREAM_FIN,
-	SEGMENT_OUT_OF_ORDER,
-	SEGMENT_TIMEOUT,
-	WINDOW_RESIZE,
-	STREAM_RST,
-	RETRANSMIT,
-	FAST_RETRANSMIT,
-	DUPLICATE_ACK,
-	STREAM_TIMEOUT,
-	;
+	public EthernetToken(int length) {
+		super(length, ProtocolIds.ETHERNET);
+	}
+
+	public EthernetToken(int length, int status, int lod) {
+		super(length, ProtocolIds.ETHERNET, status, lod);
+	}
 
 }

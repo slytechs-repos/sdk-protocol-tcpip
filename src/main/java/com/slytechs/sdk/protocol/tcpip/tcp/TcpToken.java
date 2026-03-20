@@ -15,7 +15,8 @@
  */
 package com.slytechs.sdk.protocol.tcpip.tcp;
 
-import com.slytechs.sdk.protocol.core.token.Token;
+import com.slytechs.sdk.protocol.core.id.ProtocolIds;
+import com.slytechs.sdk.protocol.core.token.ProtocolToken;
 
 /**
  * 
@@ -23,13 +24,22 @@ import com.slytechs.sdk.protocol.core.token.Token;
  * @author Mark Bednarczyk [mark@slytechs.com]
  * @author Sly Technologies Inc.
  */
-public interface TcpToken extends Token {
+public class TcpToken extends ProtocolToken {
 
-	@Override
-	TcpTokenInfo tokenType();
+	public TcpToken(int length) {
+		super(length, ProtocolIds.TCP);
+	}
 
-	TcpStream tcpStream();
-	
-	long frameNumber();
+	public TcpToken(int length, int status, int lod) {
+		super(length, ProtocolIds.TCP, status, lod);
+	}
+
+	public TcpStream tcpStream() {
+		return null;
+	}
+
+	public long frameNumber() {
+		return 0;
+	}
 
 }
