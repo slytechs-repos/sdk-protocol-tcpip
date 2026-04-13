@@ -1,98 +1,368 @@
-# Protocol TCP/IP Module
+# SDK Protocol TCP/IP
 
-A modular TCP/IP protocol analysis pack for the Protocol Network Platform, extending the core `protocol-sdk` with comprehensive TCP/IP protocol support.
+[![Java](https://img.shields.io/badge/Java-22%2B-orange.svg)](https://openjdk.java.net/projects/jdk/22/) [![Maven Central](https://img.shields.io/badge/Maven-Central-blue.svg)](https://search.maven.org/artifact/com.slytechs.sdk/sdk-protocol-tcpip) [![License](https://img.shields.io/badge/License-Apache%20v2-green.svg)](https://claude.ai/chat/LICENSE)
 
-## Overview
+TCP/IP protocol pack for the Sly Technologies Network SDK.
 
-The `protocol-tcpip` module is an extensible protocol pack designed to integrate seamlessly with the [Protocol Network Platform](https://github.com/slytechs/protocol-sdk). It provides robust support for analyzing and processing TCP/IP protocols, including IPv4, IPv6, TCP, UDP, and related protocols. This module is built to leverage the high-performance capabilities of the `protocol-sdk` and `jnetpcap-sdk` for real-time packet processing and analysis.
+**sdk-protocol-tcpip** provides comprehensive protocol definitions for TCP/IP stack analysis including Ethernet, IPv4/IPv6, TCP, UDP, VLAN, MPLS, IPsec, and more.
 
-## Key Features
+------
 
-- **Comprehensive TCP/IP Support**: Full parsing and analysis for IPv4, IPv6, TCP, UDP, ICMP, and related protocols.
-- **High Performance**: Optimized for low-latency packet processing using the `jnetpcap-sdk`.
-- **Extensible Protocol Parsing**: Modular design allows easy integration of additional TCP/IP-related protocols.
-- **Real-Time Analytics**: Compatible with the `intelligence-sdk` for real-time TCP/IP traffic insights.
-- **Flexible Configuration**: Supports custom protocol parsing and formatting through the `protocol-sdk` pipeline.
-- **Cross-Protocol Integration**: Works seamlessly with other protocol packs for layered analysis (e.g., HTTP, DNS).
+## Table of Contents
 
-## Architecture
+1. [Quick Start](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#quick-start)
+2. [Protocols](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#protocols)
+3. [Examples](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#examples)
+4. [Protocol Details](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#protocol-details)
+5. [Advanced Installation](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#advanced-installation)
+6. [Documentation](https://claude.ai/chat/2b3c34b0-d15b-43e9-95df-1d214208b87d#documentation)
 
-The `protocol-tcpip` module is built as an extension of the `protocol-sdk`, adhering to its modular architecture:
-
-- **Packet Capture**: Leverages `jnetpcap-sdk` for high-performance packet capture.
-- **Protocol Parsing**: Implements TCP/IP-specific parsers within the `protocol-sdk` framework.
-- **Analytics Integration**: Interfaces with the `intelligence-sdk` for advanced analytics and visualization.
-- **Extensibility**: Supports custom protocol definitions and extensions through protocol packs.
+------
 
 ## Quick Start
 
-To use the `protocol-tcpip` module, ensure you have the `protocol-sdk` and `jnetpcap-sdk` installed. Below is a sample code snippet demonstrating how to capture and analyze TCP/IP packets:
+### Installation (Recommended)
+
+Use the starter which pulls all dependencies:
+
+```xml
+<dependency>
+    <groupId>com.slytechs.sdk</groupId>
+    <artifactId>jnetpcap-sdk</artifactId>
+    <version>3.0.0</version>
+</dependency>
+```
+
+The `jnetpcap-sdk` starter includes `sdk-protocol-tcpip` automatically.
+
+### Basic Usage
 
 ```java
-import com.slytechs.jnetpcap.NetPcap;
-import com.slytechs.protocol.pack.tcpip.*;
+import com.slytechs.sdk.protocol.tcpip.ip.Ip4;
+import com.slytechs.sdk.protocol.tcpip.tcp.Tcp;
 
-try (NetPcap pcap = NetPcap.live()) {
-    // Configure protocol processing with TCP/IP pack
-    pcap.setPacketFormatter(new TcpIpPacketFormat());
-    pcap.activate();
+// Pre-allocate headers outside hot path
+Ip4 ip4 = new Ip4();
+Tcp tcp = new Tcp();
 
-    // Process packets and extract TCP/IP headers
-    pcap.loop(100, (String user, Packet packet) -> {
-        if (packet.hasHeader(Ip4.ID)) {
-            Ip4 ip4 = packet.getHeader(new Ip4());
-            System.out.println("IPv4 Source: " + ip4.source());
-            System.out.println("IPv4 Destination: " + ip4.destination());
+pcap.dispatch(count, packet -> {
+    
+    // hasHeader() checks presence AND binds header
+    if (packet.hasHeader(ip4)) {
+        System.out.printf("IP: %s -> %s%n", ip4.src(), ip4.dst());
+    }
+    
+    if (packet.hasHeader(tcp)) {
+        System.out.printf("TCP: %d -> %d%n", tcp.srcPort(), tcp.dstPort());
+    }
+});
+```
+
+------
+
+## Protocols
+
+### Layer 2 - Data Link
+
+| Protocol    | Class               | Description               |
+| ----------- | ------------------- | ------------------------- |
+| Ethernet II | `Ethernet`          | Standard Ethernet framing |
+| 802.3       | `Eth8023Extensions` | IEEE 802.3 extensions     |
+| VLAN        | `Vlan`              | 802.1Q VLAN tagging       |
+
+### Layer 3 - Network
+
+| Protocol  | Class      | Description                    |
+| --------- | ---------- | ------------------------------ |
+| IPv4      | `Ip4`      | Internet Protocol v4           |
+| IPv6      | `Ip6`      | Internet Protocol v6           |
+| MPLS      | `Mpls`     | Multi-Protocol Label Switching |
+| IPsec AH  | `IpsecAh`  | Authentication Header          |
+| IPsec ESP | `IpsecEsp` | Encapsulating Security Payload |
+
+### Layer 4 - Transport
+
+| Protocol | Class | Description                   |
+| -------- | ----- | ----------------------------- |
+| TCP      | `Tcp` | Transmission Control Protocol |
+| UDP      | `Udp` | User Datagram Protocol        |
+
+### Supporting Classes
+
+| Class                | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `Ip4Options`         | IPv4 option parsing                              |
+| `Ip4Flags`           | IPv4 flags (DF, MF, etc.)                        |
+| `Ip6Extensions`      | IPv6 extension header chain                      |
+| `TcpOptions`         | TCP option parsing (MSS, SACK, Timestamps, etc.) |
+| `EtherTypes`         | EtherType constants and lookup                   |
+| `OuiResolver`        | MAC address vendor resolution                    |
+| `IpProtocolResolver` | IP protocol number lookup                        |
+
+------
+
+## Examples
+
+### Ethernet and VLAN
+
+```java
+Ethernet ethernet = new Ethernet();
+Vlan vlan = new Vlan();
+
+pcap.dispatch(count, packet -> {
+    
+    if (packet.hasHeader(ethernet)) {
+        System.out.printf("Ethernet: %s -> %s [%s]%n",
+            ethernet.src(), ethernet.dst(), 
+            EtherTypes.resolve(ethernet.type()));
+        
+        // Check for VLAN tag
+        if (packet.hasHeader(vlan)) {
+            System.out.printf("  VLAN ID: %d, Priority: %d%n",
+                vlan.vid(), vlan.priority());
         }
-        if (packet.hasHeader(Tcp.ID)) {
-            Tcp tcp = packet.getHeader(new Tcp());
-            System.out.println("TCP Source Port: " + tcp.source());
-            System.out.println("TCP Destination Port: " + tcp.destination());
+    }
+});
+```
+
+### Q-in-Q (Stacked VLANs)
+
+```java
+Vlan outerVlan = new Vlan();
+Vlan innerVlan = new Vlan();
+
+pcap.dispatch(count, packet -> {
+    
+    // Depth 0 = outer, Depth 1 = inner
+    if (packet.hasHeader(outerVlan, 0) && packet.hasHeader(innerVlan, 1)) {
+        System.out.printf("Q-in-Q: Outer=%d, Inner=%d%n",
+            outerVlan.vid(), innerVlan.vid());
+    }
+});
+```
+
+### IPv4 with Flags
+
+```java
+Ip4 ip4 = new Ip4();
+
+pcap.dispatch(count, packet -> {
+    
+    if (packet.hasHeader(ip4)) {
+        System.out.printf("IPv4: %s -> %s (TTL=%d, Proto=%s)%n",
+            ip4.src(), ip4.dst(), ip4.ttl(),
+            IpProtocolResolver.resolve(ip4.protocol()));
+        
+        // Fragmentation info
+        Ip4Flags flags = ip4.flags();
+        if (flags.moreFragments() || ip4.fragmentOffset() > 0) {
+            System.out.printf("  Fragment: DF=%b, MF=%b, Offset=%d%n",
+                flags.dontFragment(), 
+                flags.moreFragments(),
+                ip4.fragmentOffset());
         }
-    }, null);
+    }
+});
+```
+
+### TCP Options
+
+```java
+Tcp tcp = new Tcp();
+TcpOptions options = new TcpOptions();
+
+pcap.dispatch(count, packet -> {
+    
+    if (packet.hasHeader(tcp)) {
+        System.out.printf("TCP: %d -> %d [%s] Seq=%d%n",
+            tcp.srcPort(), tcp.dstPort(), 
+            tcp.flags(), tcp.seq());
+        
+        if (tcp.hasOptions()) {
+            options.bind(tcp);
+            
+            if (options.hasMss())
+                System.out.println("  MSS: " + options.mss());
+            if (options.hasWindowScale())
+                System.out.println("  WScale: " + options.windowScale());
+            if (options.hasTimestamps())
+                System.out.printf("  TS: val=%d, ecr=%d%n",
+                    options.tsVal(), options.tsEcr());
+            if (options.hasSackPermitted())
+                System.out.println("  SACK Permitted");
+        }
+    }
+});
+```
+
+### IPsec
+
+```java
+Ip4 ip4 = new Ip4();
+IpsecAh ah = new IpsecAh();
+IpsecEsp esp = new IpsecEsp();
+
+pcap.dispatch(count, packet -> {
+    
+    if (packet.hasHeader(ip4)) {
+        
+        if (packet.hasHeader(ah)) {
+            System.out.printf("IPsec AH: SPI=0x%08X, Seq=%d%n",
+                ah.spi(), ah.sequence());
+        }
+        
+        if (packet.hasHeader(esp)) {
+            System.out.printf("IPsec ESP: SPI=0x%08X, Seq=%d%n",
+                esp.spi(), esp.sequence());
+        }
+    }
+});
+```
+
+### MPLS Label Stack
+
+```java
+Mpls mpls = new Mpls();
+
+pcap.dispatch(count, packet -> {
+    
+    int depth = 0;
+    while (packet.hasHeader(mpls, depth)) {
+        System.out.printf("MPLS[%d]: Label=%d, TC=%d, S=%d, TTL=%d%n",
+            depth, mpls.label(), mpls.tc(), 
+            mpls.bottomOfStack(), mpls.ttl());
+        depth++;
+    }
+});
+```
+
+------
+
+## Protocol Details
+
+### IPv4 Fields
+
+```java
+Ip4 ip4 = new Ip4();
+
+// Addresses
+Ip4Address src = ip4.src();
+Ip4Address dst = ip4.dst();
+
+// Header fields
+int version = ip4.version();
+int ihl = ip4.ihl();              // In 32-bit words
+int headerLen = ip4.headerLength(); // In bytes
+int totalLen = ip4.totalLength();
+int id = ip4.identification();
+int ttl = ip4.ttl();
+int protocol = ip4.protocol();
+int checksum = ip4.checksum();
+
+// Type of Service
+Ip4TosFlags tos = ip4.tos();
+int dscp = tos.dscp();
+int ecn = tos.ecn();
+```
+
+### TCP Fields
+
+```java
+Tcp tcp = new Tcp();
+
+// Ports
+int srcPort = tcp.srcPort();
+int dstPort = tcp.dstPort();
+
+// Sequence numbers
+long seq = tcp.seq();
+long ack = tcp.ack();
+
+// Flags
+TcpFlags flags = tcp.flags();
+boolean syn = flags.syn();
+boolean ackFlag = flags.ack();
+boolean fin = flags.fin();
+boolean rst = flags.rst();
+
+// Window
+int window = tcp.window();
+int dataOffset = tcp.dataOffset();  // In 32-bit words
+```
+
+------
+
+## Advanced Installation
+
+### Standalone (With BOM)
+
+For projects that don't use the starter:
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.slytechs.sdk</groupId>
+            <artifactId>sdk-bom</artifactId>
+            <version>3.0.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>com.slytechs.sdk</groupId>
+        <artifactId>sdk-protocol-tcpip</artifactId>
+    </dependency>
+</dependencies>
+```
+
+### Gradle
+
+```groovy
+dependencies {
+    implementation 'com.slytechs.sdk:jnetpcap-sdk:3.0.0'
 }
 ```
 
-## Installation
+### Module Declaration
 
-1. Add the `protocol-tcpip` module as a dependency in your project:
-   ```xml
-   <dependency>
-       <groupId>com.slytechs</groupId>
-       <artifactId>protocol-tcpip</artifactId>
-       <version>1.0.0</version>
-   </dependency>
-   ```
+```java
+module your.app {
+    requires com.slytechs.sdk.protocol.tcpip;
+}
+```
 
-2. Ensure the `protocol-sdk` and `jnetpcap-sdk` dependencies are also included:
-   ```xml
-   <dependency>
-       <groupId>com.slytechs</groupId>
-       <artifactId>protocol-sdk</artifactId>
-       <version>1.0.0</version>
-   </dependency>
-   <dependency>
-       <groupId>com.slytechs</groupId>
-       <artifactId>jnetpcap-sdk</artifactId>
-       <version>1.0.0</version>
-   </dependency>
-   ```
-
-3. Configure your project to include the necessary native libraries for `jnetpcap-sdk`.
+------
 
 ## Documentation
 
-- [TCP/IP Protocol API Reference](docs/protocol-tcpip-api.md)
-- [Protocol Pack Guide](https://www.slytechs.com/docs/protocol-packs.md)
-- [Analytics Integration](https://www.slytechs.com/docs/analytics.md)
-- [Examples](examples/)
+- [GitHub Wiki](https://github.com/slytechs-repos/sdk-protocol-tcpip/wiki) - User guides
+- [Javadocs](https://slytechs-repos.github.io/sdk-protocol-tcpip/) - API documentation
+
+------
+
+## Related Projects
+
+| Module                                                       | Description                               |
+| ------------------------------------------------------------ | ----------------------------------------- |
+| [jnetpcap-sdk](https://github.com/slytechs-repos/jnetpcap-sdk) | Starter - pulls all dependencies          |
+| [sdk-protocol-core](https://github.com/slytechs-repos/sdk-protocol-core) | Protocol dissection framework             |
+| [sdk-protocol-web](https://github.com/slytechs-repos/sdk-protocol-web) | Web protocols (HTTP, TLS, DNS)            |
+| [sdk-protocol-infra](https://github.com/slytechs-repos/sdk-protocol-infra) | Infrastructure protocols (BGP, OSPF, STP) |
+
+------
 
 ## License
 
-The `protocol-tcpip` module is available under a commercial license, with the core `protocol-sdk` available under the Apache 2.0 license. Contact [Sly Technologies](https://www.slytechs.com) for licensing details.
+Licensed under Apache License v2.0. See [LICENSE](https://claude.ai/chat/LICENSE) for details.
 
-## Support
+------
 
-- [Documentation](https://www.slytechs.com/docs)
-- [Commercial Support](https://www.slytechs.com/support)
-- [Training](https://www.slytechs.com/training)
+**Sly Technologies Inc.** - High-performance network analysis solutions
+
+Website: [www.slytechs.com](https://www.slytechs.com/)
+
+------

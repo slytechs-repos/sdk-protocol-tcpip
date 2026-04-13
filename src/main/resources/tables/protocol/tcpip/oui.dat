@@ -1,0 +1,5 @@
+# Placeholder for OUI lookup table
+# Format: OUI (hex, e.g., 00:00:0C) = Vendor Name
+00:00:0C=Cisco Systems
+00:50:56=VMware, Inc.
+# Add more OUI entries as needed
